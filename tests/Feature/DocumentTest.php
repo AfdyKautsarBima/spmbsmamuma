@@ -105,9 +105,14 @@ class DocumentTest extends TestCase
         $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::Diterima, 'ktp_wali' => S::Diterima] + $base)));
         $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::Belum, 'ktp_ibu' => S::Belum, 'ktp_wali' => S::Diterima] + $base)));
 
-        // hanya satu orang tua tanpa wali: belum lengkap
-        $this->assertFalse($c->isComplete($this->map(['ktp_ibu' => S::TidakAda] + $base)));
-        $this->assertContains('KTP orang tua/wali', $c->missing($this->map(['ktp_ibu' => S::TidakAda] + $base)));
+        // satu KTP diterima dan orang tua lainnya tidak ada/almarhum: lengkap
+        $this->assertTrue($c->isComplete($this->map(['ktp_ibu' => S::TidakAda] + $base)));
+        $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::Diterima] + $base)));
+
+        // tanpa status KTP yang memenuhi: belum lengkap
+        $this->assertFalse($c->isComplete($this->map(['ktp_ibu' => S::Belum] + $base)));
+        $this->assertFalse($c->isComplete($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::TidakAda] + $base)));
+        $this->assertContains('KTP orang tua/wali', $c->missing($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::TidakAda] + $base)));
 
         // kondisional tidak boleh Belum
         $missing = $c->missing($this->map(['kks' => S::Belum] + $base));

@@ -45,8 +45,11 @@ class DocumentChecklist
             }
         }
 
-        $parents = ($map[DocumentType::KtpAyah->value] === DocumentStatus::Diterima
-                && $map[DocumentType::KtpIbu->value] === DocumentStatus::Diterima)
+        $fatherKtp = $map[DocumentType::KtpAyah->value];
+        $motherKtp = $map[DocumentType::KtpIbu->value];
+        $parents = ($fatherKtp === DocumentStatus::Diterima
+                && in_array($motherKtp, [DocumentStatus::Diterima, DocumentStatus::TidakAda], true))
+            || ($motherKtp === DocumentStatus::Diterima && $fatherKtp === DocumentStatus::TidakAda)
             || $map[DocumentType::KtpWali->value] === DocumentStatus::Diterima;
 
         if (! $parents) {
