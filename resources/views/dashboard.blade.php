@@ -25,8 +25,13 @@
                     <div class="flex justify-between"><dt>Total pendaftar</dt><dd class="font-semibold">{{ $stats['total'] }}</dd></div>
                     <div class="flex justify-between"><dt>Pendaftar hari ini</dt><dd>{{ $stats['today'] }}</dd></div>
                     <div class="flex justify-between"><dt>Nomor terakhir dipakai</dt><dd>{{ $stats['last'] ?? '-' }}</dd></div>
+                    <div class="flex justify-between"><dt>Berkas lengkap</dt><dd>{{ $stats['complete'] }}</dd></div>
+                    <div class="flex justify-between"><dt>Berkas belum lengkap</dt><dd>{{ $stats['incomplete'] }}</dd></div>
                 </dl>
-                <a href="{{ route('applicants.create') }}" class="mt-3 inline-block rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-700">Input pendaftar</a>
+                <div class="mt-3 flex gap-2">
+                    <a href="{{ route('applicants.create') }}" class="rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-700">Input pendaftar</a>
+                    <a href="{{ route('documents.index', ['status' => 'belum']) }}" class="rounded border px-3 py-2 text-sm hover:bg-slate-50">Berkas belum lengkap</a>
+                </div>
             </div>
         @endif
 
@@ -42,5 +47,5 @@
         @endif
     </div>
 
-    <p class="mt-6 text-sm text-slate-500">Menu cek berkas, daftar ulang, dan seragam akan ditambahkan pada tahap berikutnya.</p>
+    <p class="mt-6 text-sm text-slate-500">Menu daftar ulang dan seragam akan ditambahkan pada tahap berikutnya.</p>
 @endsection

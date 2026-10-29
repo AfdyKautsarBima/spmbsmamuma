@@ -4,6 +4,7 @@ use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\OccupationController;
@@ -40,6 +41,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('applicants/{applicant}', [ApplicantController::class, 'show'])->withTrashed()->name('applicants.show');
         Route::get('applicants/{applicant}/edit', [ApplicantController::class, 'edit'])->name('applicants.edit');
         Route::put('applicants/{applicant}', [ApplicantController::class, 'update'])->name('applicants.update');
+        Route::get('berkas', [DocumentController::class, 'index'])->name('documents.index');
+        Route::get('berkas/{applicant}', [DocumentController::class, 'edit'])->name('documents.edit');
+        Route::put('berkas/{applicant}', [DocumentController::class, 'update'])->name('documents.update');
+
         Route::get('applicants/{applicant}/print', [ApplicantController::class, 'print'])->withTrashed()->name('applicants.print');
     });
 

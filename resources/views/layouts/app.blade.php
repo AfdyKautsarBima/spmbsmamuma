@@ -22,6 +22,7 @@
             {!! $link('dashboard', 'Dashboard', 'dashboard') !!}
             @if ($canRegister)
                 {!! $link('applicants.index', 'Pendaftar', 'applicants.*') !!}
+                {!! $link('documents.index', 'Cek Berkas', 'documents.*') !!}
             @endif
             @if ($me->isAdmin())
                 {!! $link('academic-years.index', 'Tahun Ajaran', 'academic-years.*') !!}

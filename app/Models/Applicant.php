@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Applicant extends Model
@@ -17,11 +19,12 @@ class Applicant extends Model
         'district_code', 'district_name', 'village_code', 'village_name', 'rt', 'rw',
         'father_name', 'mother_name', 'phone',
         'school_id', 'referrer_id', 'person_key', 'created_by',
+        'nisn', 'documents_complete',
     ];
 
     protected function casts(): array
     {
-        return ['birth_date' => 'date', 'registration_seq' => 'integer'];
+        return ['birth_date' => 'date', 'registration_seq' => 'integer', 'documents_complete' => 'boolean'];
     }
 
     public function academicYear(): BelongsTo
@@ -42,6 +45,16 @@ class Applicant extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ApplicantDocument::class);
+    }
+
+    public function familyDetail(): HasOne
+    {
+        return $this->hasOne(ApplicantFamilyDetail::class);
     }
 
     /** 1 -> A-001, 1000 -> A-1000 */

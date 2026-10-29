@@ -52,6 +52,8 @@
         </div>
     </div>
 
+    @include('documents.summary', ['applicant' => $applicant, 'canEdit' => $canEdit])
+
     @if (auth()->user()->isAdmin())
         <div class="mt-4 rounded-lg bg-white p-4 shadow-sm">
             @if ($applicant->trashed())

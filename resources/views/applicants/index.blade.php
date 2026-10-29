@@ -51,6 +51,7 @@
                     <th class="px-4 py-3">Asal sekolah</th>
                     <th class="px-4 py-3">Pembawa</th>
                     <th class="px-4 py-3">Desa / Kecamatan</th>
+                    <th class="px-4 py-3">Berkas</th>
                     <th class="px-4 py-3">Diinput</th>
                     <th class="px-4 py-3"></th>
                 </tr>
@@ -64,16 +65,20 @@
                         <td class="px-4 py-3">{{ $a->school->name }}</td>
                         <td class="px-4 py-3">{{ $a->referrer?->name ?? '-' }}</td>
                         <td class="px-4 py-3">{{ $a->village_name }} / {{ $a->district_name }}</td>
+                        <td class="px-4 py-3">
+                            <span class="rounded px-2 py-1 text-xs {{ $a->documents_complete ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">{{ $a->documents_complete ? 'Lengkap' : 'Belum lengkap' }}</span>
+                        </td>
                         <td class="whitespace-nowrap px-4 py-3">{{ $a->created_at->format('d/m/Y H:i') }}</td>
                         <td class="flex justify-end gap-2 px-4 py-3">
                             <a href="{{ route('applicants.show', $a) }}" class="rounded border px-3 py-1 text-slate-800 hover:bg-slate-50">Lihat</a>
                             @if (! $a->trashed() && ! $readOnly)
                                 <a href="{{ route('applicants.edit', $a) }}" class="rounded border px-3 py-1 text-slate-800 hover:bg-slate-50">Ubah</a>
+                                <a href="{{ route('documents.edit', $a) }}" class="rounded border px-3 py-1 text-slate-800 hover:bg-slate-50">Berkas</a>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="px-4 py-6 text-center text-slate-500">Tidak ada data.</td></tr>
+                    <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">Tidak ada data.</td></tr>
                 @endforelse
             </tbody>
         </table>
