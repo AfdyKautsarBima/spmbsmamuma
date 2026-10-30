@@ -2,7 +2,7 @@
     $applicant->loadMissing(['documents', 'familyDetail.fatherOccupation', 'familyDetail.motherOccupation', 'familyDetail.guardianOccupation']);
     $checklist = app(\App\Services\DocumentChecklist::class);
     $statusMap = $checklist->statusMap($applicant);
-    $missingList = $checklist->missing($statusMap);
+    $missingList = $checklist->missing($statusMap, $checklist->absentParents($applicant));
     $kk = $applicant->familyDetail;
 @endphp
 

@@ -29,7 +29,7 @@ class DocumentController extends Controller
         $year = AcademicYear::active();
 
         $applicants = Applicant::query()
-            ->with(['school', 'documents'])
+            ->with(['school', 'documents', 'familyDetail'])
             ->when($year, fn ($q, $y) => $q->where('academic_year_id', $y->id), fn ($q) => $q->whereRaw('1 = 0'))
             ->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w
                 ->where('name', 'like', "%{$s}%")
@@ -43,7 +43,10 @@ class DocumentController extends Controller
 
         $missing = [];
         foreach ($applicants as $applicant) {
-            $missing[$applicant->id] = $this->checklist->missing($this->checklist->statusMap($applicant));
+            $missing[$applicant->id] = $this->checklist->missing(
+                $this->checklist->statusMap($applicant),
+                $this->checklist->absentParents($applicant),
+            );
         }
 
         return view('documents.index', ['applicants' => $applicants, 'year' => $year, 'missing' => $missing]);

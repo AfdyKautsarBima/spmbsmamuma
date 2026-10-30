@@ -105,14 +105,30 @@ class DocumentTest extends TestCase
         $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::Diterima, 'ktp_wali' => S::Diterima] + $base)));
         $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::Belum, 'ktp_ibu' => S::Belum, 'ktp_wali' => S::Diterima] + $base)));
 
-        // satu KTP diterima dan orang tua lainnya tidak ada/almarhum: lengkap
+        // satu orang tua tidak ada/almarhum (KTP "Tidak ada"), tanpa wali: LENGKAP
         $this->assertTrue($c->isComplete($this->map(['ktp_ibu' => S::TidakAda] + $base)));
-        $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::Diterima] + $base)));
+        $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::TidakAda] + $base)));
 
-        // tanpa status KTP yang memenuhi: belum lengkap
-        $this->assertFalse($c->isComplete($this->map(['ktp_ibu' => S::Belum] + $base)));
-        $this->assertFalse($c->isComplete($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::TidakAda] + $base)));
-        $this->assertContains('KTP orang tua/wali', $c->missing($this->map(['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::TidakAda] + $base)));
+        // satu orang tua diterima, yang lain masih Belum: belum lengkap
+        $this->assertSame(['KTP orang tua/wali'], $c->missing($this->map(['ktp_ibu' => S::Belum] + $base)));
+
+        // kedua orang tua tidak ada: wajib KTP wali
+        $bothGone = ['ktp_ayah' => S::TidakAda, 'ktp_ibu' => S::TidakAda] + $base;
+        $this->assertSame(['KTP wali (kedua orang tua tidak ada)'], $c->missing($this->map($bothGone)));
+        $this->assertTrue($c->isComplete($this->map(['ktp_wali' => S::Diterima] + $bothGone)));
+
+        // penanda "tidak ada/almarhum" di data KK juga dihitung, walau status KTP-nya masih Belum
+        $fatherFlag = ['father' => true, 'mother' => false];
+        $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::Belum] + $base), $fatherFlag));
+        $this->assertFalse($c->isComplete($this->map(['ktp_ayah' => S::Belum] + $base)));
+        $this->assertSame(
+            ['KTP wali (kedua orang tua tidak ada)'],
+            $c->missing($this->map(['ktp_ayah' => S::Belum, 'ktp_ibu' => S::Belum] + $base), ['father' => true, 'mother' => true]),
+        );
+        $this->assertTrue($c->isComplete(
+            $this->map(['ktp_ayah' => S::Belum, 'ktp_ibu' => S::Belum, 'ktp_wali' => S::Diterima] + $base),
+            ['father' => true, 'mother' => true],
+        ));
 
         // kondisional tidak boleh Belum
         $missing = $c->missing($this->map(['kks' => S::Belum] + $base));
@@ -365,6 +381,89 @@ class DocumentTest extends TestCase
 
         $this->submit($a, $this->docs(['skl' => 'belum']))->assertSessionHasNoErrors();
         $this->assertSame('0012345678', $a->fresh()->nisn);
+    }
+
+    // ---------- satu orang tua tidak ada ----------
+
+    private function fullDocs(array $override = []): array
+    {
+        return $this->docs($override + [
+            'akta_kelahiran' => 'diterima', 'foto' => 'diterima', 'kk' => 'diterima', 'skl' => 'diterima',
+            'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
+        ]);
+    }
+
+    public function test_one_parent_absent_without_guardian_is_complete(): void
+    {
+        $a = $this->makeApplicant();
+
+        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'diterima']), [
+            'nisn'   => '0012345678',
+            'family' => $this->family(['father_absent' => '1']),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue($a->fresh()->documents_complete);
+        $this->assertNull($a->fresh()->familyDetail->guardian_name);
+    }
+
+    public function test_absent_flag_in_kk_counts_even_if_ktp_status_left_belum(): void
+    {
+        $a = $this->makeApplicant();
+
+        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'belum', 'ktp_ibu' => 'diterima']), [
+            'nisn'   => '0012345678',
+            'family' => $this->family(['father_absent' => '1']),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue($a->fresh()->documents_complete);
+    }
+
+    public function test_one_parent_present_but_other_undecided_is_incomplete(): void
+    {
+        $a = $this->makeApplicant();
+
+        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'belum', 'ktp_ibu' => 'diterima']), [
+            'nisn'   => '0012345678',
+            'family' => $this->family(),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertFalse($a->fresh()->documents_complete);
+    }
+
+    public function test_both_parents_absent_needs_guardian_ktp(): void
+    {
+        $a = $this->makeApplicant();
+        $guardian = ['guardian_name' => 'Pak Dhe', 'guardian_nik' => '3319010101700009', 'guardian_relation' => 'Paman',
+            'guardian_occupation_id' => $this->job->id];
+        $family = $this->family(['father_absent' => '1', 'mother_absent' => '1'] + $guardian);
+
+        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'tidak_ada']), ['nisn' => '0012345678', 'family' => $family])
+            ->assertSessionHasNoErrors();
+        $this->assertFalse($a->fresh()->documents_complete);
+
+        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'tidak_ada', 'ktp_wali' => 'diterima']), ['nisn' => '0012345678', 'family' => $family])
+            ->assertSessionHasNoErrors();
+        $this->assertTrue($a->fresh()->documents_complete);
+    }
+
+    public function test_recalculate_command_fixes_stale_completeness(): void
+    {
+        $a = $this->makeApplicant(1);
+        $b = $this->makeApplicant(2);
+
+        foreach ([
+            'akta_kelahiran' => 'diterima', 'kk' => 'diterima', 'skl' => 'diterima', 'foto' => 'diterima',
+            'ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'diterima',
+            'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
+        ] as $type => $status) {
+            ApplicantDocument::create(['applicant_id' => $a->id, 'type' => $type, 'status' => $status]);
+        }
+        $this->assertFalse($a->fresh()->documents_complete); // nilai lama yang basi
+
+        $this->artisan('berkas:hitung-ulang')->assertSuccessful();
+
+        $this->assertTrue($a->fresh()->documents_complete);
+        $this->assertFalse($b->fresh()->documents_complete);
     }
 
     // ---------- akses ----------

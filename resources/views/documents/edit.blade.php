@@ -8,7 +8,7 @@
     $input = 'w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm';
     $groupHints = [
         'wajib'       => 'Harus berstatus Diterima.',
-        'orangtua'    => 'Lengkap bila KTP ayah dan ibu diterima, atau KTP wali diterima.',
+        'orangtua'    => 'Lengkap bila: KTP ayah dan ibu diterima; atau satu orang tua tidak ada/almarhum (pilih Tidak ada, atau dicentang di data KK) dan KTP orang tua yang lain diterima; atau KTP wali diterima.',
         'kondisional' => 'Putuskan Diterima atau Tidak ada (misalnya murid bukan penerima KKS). Jangan dibiarkan Belum.',
     ];
 @endphp
