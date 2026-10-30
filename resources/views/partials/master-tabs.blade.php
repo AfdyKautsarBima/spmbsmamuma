@@ -4,6 +4,7 @@
         ['referrers.index', 'Pembawa', 'referrers.*'],
         ['occupations.index', 'Pekerjaan', 'occupations.*'],
         ['regions.index', 'Wilayah', 'regions.*'],
+        ['discount-periods.index', 'Diskon', 'discount-periods.*'],
     ];
 @endphp
 <div class="mb-5 flex flex-wrap gap-1 border-b border-slate-300">

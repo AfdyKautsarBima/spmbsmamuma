@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,11 +21,12 @@ class Applicant extends Model
         'father_name', 'mother_name', 'phone',
         'school_id', 'referrer_id', 'person_key', 'created_by',
         'nisn', 'documents_complete',
+        'withdrawn_at', 'withdrawn_reason', 'withdrawn_by', 'refund_note',
     ];
 
     protected function casts(): array
     {
-        return ['birth_date' => 'date', 'registration_seq' => 'integer', 'documents_complete' => 'boolean'];
+        return ['birth_date' => 'date', 'registration_seq' => 'integer', 'documents_complete' => 'boolean', 'withdrawn_at' => 'date'];
     }
 
     public function academicYear(): BelongsTo
@@ -57,6 +59,31 @@ class Applicant extends Model
         return $this->hasOne(ApplicantFamilyDetail::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function billing(): HasOne
+    {
+        return $this->hasOne(ApplicantBilling::class);
+    }
+
+    /** Filter status daftar ulang di database: terdaftar | menyicil | lunas | mundur. */
+    public function scopeEnrollmentStatus(Builder $query, ?string $status): Builder
+    {
+        $paid = '(select coalesce(sum(p.amount), 0) from payments p where p.applicant_id = applicants.id and p.cancelled_at is null)';
+        $net = '(select b.net_bill from applicant_billings b where b.applicant_id = applicants.id)';
+
+        return match ($status) {
+            'mundur'    => $query->whereNotNull('applicants.withdrawn_at'),
+            'terdaftar' => $query->whereNull('applicants.withdrawn_at')->whereRaw("{$paid} = 0"),
+            'menyicil'  => $query->whereNull('applicants.withdrawn_at')->whereRaw("{$paid} > 0")->whereRaw("{$paid} < {$net}"),
+            'lunas'     => $query->whereNull('applicants.withdrawn_at')->whereRaw("{$paid} > 0")->whereRaw("{$paid} >= {$net}"),
+            default     => $query,
+        };
+    }
+
     /** 1 -> A-001, 1000 -> A-1000 */
     public static function formatNumber(int $seq): string
     {
@@ -83,13 +110,10 @@ class Applicant extends Model
         return $norm($name).'|'.$birthDate.'|'.$norm($motherName);
     }
 
-    /**
-     * Pembawa terkunci sejak pembayaran pertama yang sah (hanya admin yang boleh mengubah).
-     * Pembayaran baru dibuat di tahap 5, jadi untuk sekarang belum ada yang terkunci.
-     */
+    /** Pembawa terkunci sejak pembayaran pertama yang sah. Setelah itu hanya admin yang boleh mengubahnya. */
     public function referrerLocked(): bool
     {
-        return false;
+        return $this->payments()->whereNull('cancelled_at')->exists();
     }
 
     public function fullAddress(): string

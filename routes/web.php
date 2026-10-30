@@ -4,7 +4,9 @@ use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DiscountPeriodController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\OccupationController;
@@ -48,6 +50,16 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('applicants/{applicant}/print', [ApplicantController::class, 'print'])->withTrashed()->name('applicants.print');
     });
 
+    // Panitia daftar ulang dan admin
+    Route::middleware('role:admin,daftar_ulang')->group(function () {
+        Route::get('daftar-ulang', [EnrollmentController::class, 'index'])->name('enrollment.index');
+        Route::get('daftar-ulang/{applicant}', [EnrollmentController::class, 'show'])->name('enrollment.show');
+        Route::post('daftar-ulang/{applicant}/pembayaran', [EnrollmentController::class, 'storePayment'])->name('enrollment.payments.store');
+        Route::post('daftar-ulang/{applicant}/mundur', [EnrollmentController::class, 'withdraw'])->name('enrollment.withdraw');
+        Route::get('daftar-ulang/{applicant}/bukti', [EnrollmentController::class, 'proof'])->name('enrollment.proof');
+        Route::get('kwitansi/{payment}', [EnrollmentController::class, 'receipt'])->name('enrollment.receipt');
+    });
+
     Route::middleware('role:admin')->group(function () {
         Route::delete('applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::patch('applicants/{applicant}/restore', [ApplicantController::class, 'restore'])->withTrashed()->name('applicants.restore');
@@ -59,6 +71,16 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::resource('users', UserController::class)->except(['show', 'destroy']);
         Route::patch('users/{user}/toggle-active', [UserController::class, 'toggleActive'])
             ->name('users.toggle-active');
+
+        // Pembatalan, diskon, dan catatan pengembalian: admin saja
+        Route::post('pembayaran/{payment}/batal', [EnrollmentController::class, 'cancelPayment'])->name('enrollment.payments.cancel');
+        Route::post('daftar-ulang/{applicant}/batal-mundur', [EnrollmentController::class, 'cancelWithdrawal'])->name('enrollment.withdrawal.cancel');
+        Route::post('daftar-ulang/{applicant}/diskon', [EnrollmentController::class, 'setDiscount'])->name('enrollment.discount');
+        Route::put('daftar-ulang/{applicant}/catatan-pengembalian', [EnrollmentController::class, 'refundNote'])->name('enrollment.refund-note');
+
+        Route::resource('discount-periods', DiscountPeriodController::class)->except(['show', 'destroy']);
+        Route::patch('discount-periods/{discount_period}/toggle-active', [DiscountPeriodController::class, 'toggleActive'])
+            ->name('discount-periods.toggle-active');
 
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 

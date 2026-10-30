@@ -7,12 +7,13 @@ use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\User;
 use App\Services\ApplicantChecks;
+use App\Services\EnrollmentStats;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, ApplicantChecks $checks): View
+    public function __invoke(Request $request, ApplicantChecks $checks, EnrollmentStats $enrollmentStats): View
     {
         $user = $request->user();
         $year = AcademicYear::active();
@@ -37,6 +38,12 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('dashboard', ['year' => $year, 'roleCounts' => $roleCounts, 'stats' => $stats]);
+        $enrollment = ($year && in_array($user->role, [Role::Admin, Role::DaftarUlang], true))
+            ? $enrollmentStats->forYear($year)
+            : null;
+
+        return view('dashboard', [
+            'year' => $year, 'roleCounts' => $roleCounts, 'stats' => $stats, 'enrollment' => $enrollment,
+        ]);
     }
 }

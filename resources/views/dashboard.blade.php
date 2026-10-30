@@ -47,5 +47,43 @@
         @endif
     </div>
 
-    <p class="mt-6 text-sm text-slate-500">Menu daftar ulang dan seragam akan ditambahkan pada tahap berikutnya.</p>
+    @if ($enrollment)
+        @php($rp = fn ($n) => 'Rp '.number_format((int) $n, 0, ',', '.'))
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+            <div class="rounded-lg bg-white p-4 shadow-sm">
+                <h2 class="mb-2 text-sm font-medium text-slate-500">Daftar ulang hari ini</h2>
+                <dl class="space-y-1 text-sm">
+                    <div class="flex justify-between"><dt>Uang masuk hari ini</dt><dd class="font-semibold">{{ $rp($enrollment['today_money']) }}</dd></div>
+                    <div class="flex justify-between"><dt>Murid membayar hari ini</dt><dd>{{ $enrollment['today_students'] }}</dd></div>
+                    <div class="flex justify-between"><dt>Sedang menyicil</dt><dd>{{ $enrollment['counts']['menyicil'] }}</dd></div>
+                    <div class="flex justify-between"><dt>Sisa tagihan yang menyicil</dt><dd>{{ $rp($enrollment['money']['installment_remaining']) }}</dd></div>
+                </dl>
+                <a href="{{ route('enrollment.index') }}" class="mt-3 inline-block rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-700">Buka daftar ulang</a>
+            </div>
+
+            @if (auth()->user()->isAdmin())
+                <div class="rounded-lg bg-white p-4 shadow-sm">
+                    <h2 class="mb-2 text-sm font-medium text-slate-500">Status dan keuangan</h2>
+                    <dl class="space-y-1 text-sm">
+                        @foreach (\App\Enums\EnrollmentStatus::cases() as $s)
+                            <div class="flex justify-between"><dt>{{ $s->label() }}</dt><dd>{{ $enrollment['counts'][$s->value] }}</dd></div>
+                        @endforeach
+                        <div class="mt-2 flex justify-between border-t pt-2"><dt>Tagihan kotor</dt><dd>{{ $rp($enrollment['money']['gross']) }}</dd></div>
+                        <div class="flex justify-between"><dt>Total diskon</dt><dd>{{ $rp($enrollment['money']['discount']) }}</dd></div>
+                        <div class="flex justify-between"><dt>Tagihan bersih</dt><dd>{{ $rp($enrollment['money']['net']) }}</dd></div>
+                        <div class="flex justify-between"><dt>Total diterima</dt><dd class="font-semibold">{{ $rp($enrollment['money']['paid']) }}</dd></div>
+                        <div class="flex justify-between"><dt>Total sisa</dt><dd>{{ $rp($enrollment['money']['remaining']) }}</dd></div>
+                    </dl>
+                    @if ($enrollment['overpaid'] > 0 || $enrollment['withdrawn_with_payment'] > 0)
+                        <div class="mt-3 space-y-1 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                            @if ($enrollment['overpaid'] > 0)<p>{{ $enrollment['overpaid'] }} murid kelebihan bayar.</p>@endif
+                            @if ($enrollment['withdrawn_with_payment'] > 0)<p>{{ $enrollment['withdrawn_with_payment'] }} murid mundur sudah membayar (total {{ $rp($enrollment['money']['withdrawn_paid']) }}).</p>@endif
+                        </div>
+                    @endif
+                </div>
+            @endif
+        </div>
+    @endif
+
+    <p class="mt-6 text-sm text-slate-500">Menu seragam akan ditambahkan pada tahap berikutnya.</p>
 @endsection

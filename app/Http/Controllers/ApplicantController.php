@@ -170,7 +170,10 @@ class ApplicantController extends Controller
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']], [], ['reason' => 'alasan']);
 
-        // Tahap 5: tolak penghapusan bila murid sudah punya pembayaran sah.
+        if ($applicant->payments()->whereNull('cancelled_at')->exists()) {
+            return back()->with('error', 'Pendaftar ini sudah memiliki pembayaran sah dan tidak bisa dihapus. Batalkan pembayarannya lebih dulu.');
+        }
+
         $applicant->delete();
 
         ActivityLog::record(
