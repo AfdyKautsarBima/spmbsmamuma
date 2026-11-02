@@ -167,7 +167,7 @@
                 <form method="POST" action="{{ route('enrollment.withdraw', $applicant) }}" class="grid max-w-2xl gap-3 sm:grid-cols-[160px_1fr_auto]"
                       onsubmit="return confirm('Tandai {{ $applicant->name }} mengundurkan diri?')">
                     @csrf
-                    <input type="date" name="date" required value="{{ old('date', today()->format('Y-m-d')) }}" max="{{ today()->format('Y-m-d') }}" class="{{ $input }}">
+                    <x-date-input name="date" :required="true" :value="old('date', today()->format('d/m/Y'))" class="w-full" />
                     <input name="reason" required minlength="3" placeholder="Alasan" value="{{ old('reason') }}" class="{{ $input }}">
                     <button class="rounded border border-red-300 px-4 py-2 text-sm text-red-700 hover:bg-red-50">Tandai mundur</button>
                 </form>

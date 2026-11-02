@@ -5,6 +5,8 @@
         ['occupations.index', 'Pekerjaan', 'occupations.*'],
         ['regions.index', 'Wilayah', 'regions.*'],
         ['discount-periods.index', 'Diskon', 'discount-periods.*'],
+        ['uniform-types.index', 'Jenis Seragam', 'uniform-types.*'],
+        ['uniform-sizes.index', 'Ukuran Seragam', 'uniform-sizes.*'],
     ];
 @endphp
 <div class="mb-5 flex flex-wrap gap-1 border-b border-slate-300">

@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\DB;
  */
 class EnrollmentService
 {
+    public function __construct(private UniformService $uniform)
+    {
+    }
+
     public static function netBill(int $fee, int $percent): int
     {
         return intdiv($fee * (100 - $percent), 100); // dibulatkan ke bawah
@@ -160,6 +164,8 @@ class EnrollmentService
             ['kwitansi' => $payment->receipt_number, 'nominal' => $amount, 'total_dibayar' => $paid + $amount, 'tagihan_bersih' => $billing->net_bill],
         );
 
+        $this->uniform->sync($applicant);
+
         return $payment;
     }
 
@@ -240,6 +246,8 @@ class EnrollmentService
                     );
                 }
             }
+
+            $this->uniform->sync($applicant);
         });
     }
 
@@ -285,6 +293,8 @@ class EnrollmentService
                 ['diskon' => $percent.'%', 'tagihan_bersih' => $billing->net_bill],
                 $reason,
             );
+
+            $this->uniform->sync($applicant);
         });
 
         $applicant->unsetRelation('billing');
@@ -333,6 +343,8 @@ class EnrollmentService
             ['status' => 'aktif'],
             $reason,
         );
+
+        $this->uniform->sync($applicant);
     }
 
     public function setRefundNote(Applicant $applicant, ?string $note): void

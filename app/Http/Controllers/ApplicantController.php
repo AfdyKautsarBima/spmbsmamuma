@@ -8,6 +8,7 @@ use App\Models\ActivityLog;
 use App\Models\Applicant;
 use App\Models\School;
 use App\Services\ApplicantChecks;
+use App\Support\DateInput;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,7 +46,7 @@ class ApplicantController extends Controller
                 ->orWhere('father_name', 'like', "%{$s}%")
                 ->orWhere('mother_name', 'like', "%{$s}%")))
             ->when($request->school_id, fn ($q, $id) => $q->where('school_id', $id))
-            ->when($request->date, fn ($q, $d) => $q->whereDate('created_at', $d))
+            ->when(DateInput::iso($request->date), fn ($q, $d) => $q->whereDate('created_at', $d))
             ->orderByDesc('registration_seq')
             ->paginate(25)
             ->withQueryString();
@@ -172,6 +173,10 @@ class ApplicantController extends Controller
 
         if ($applicant->payments()->whereNull('cancelled_at')->exists()) {
             return back()->with('error', 'Pendaftar ini sudah memiliki pembayaran sah dan tidak bisa dihapus. Batalkan pembayarannya lebih dulu.');
+        }
+
+        if ($applicant->uniformHandovers()->exists()) {
+            return back()->with('error', 'Pendaftar ini sudah menerima seragam dan tidak bisa dihapus.');
         }
 
         $applicant->delete();

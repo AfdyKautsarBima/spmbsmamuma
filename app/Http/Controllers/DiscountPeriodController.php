@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\ActivityLog;
 use App\Models\DiscountPeriod;
+use App\Support\DateInput;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -89,13 +90,22 @@ class DiscountPeriodController extends Controller
 
     private function validated(Request $request, int $yearId, ?DiscountPeriod $period): array
     {
+        $request->merge([
+            'starts_on' => DateInput::toIso($request->input('starts_on')),
+            'ends_on'   => DateInput::toIso($request->input('ends_on')),
+        ]);
+
         $data = $request->validate([
             'name'        => ['required', 'string', 'max:100'],
             'starts_on'   => ['required', 'date_format:Y-m-d'],
             'ends_on'     => ['required', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
             'percent'     => ['required', 'integer', 'between:1,99'],
             'description' => ['nullable', 'string', 'max:255'],
-        ], [], [
+        ], [
+            'starts_on.date_format'    => 'Tanggal mulai harus berformat dd/mm/yyyy, misalnya 01/11/2026.',
+            'ends_on.date_format'      => 'Tanggal akhir harus berformat dd/mm/yyyy, misalnya 30/11/2026.',
+            'ends_on.after_or_equal'   => 'Tanggal akhir tidak boleh sebelum tanggal mulai.',
+        ], [
             'name' => 'nama periode', 'starts_on' => 'tanggal mulai', 'ends_on' => 'tanggal akhir',
             'percent' => 'persen diskon', 'description' => 'keterangan',
         ]);

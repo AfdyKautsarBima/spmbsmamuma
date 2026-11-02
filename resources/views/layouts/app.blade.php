@@ -13,6 +13,7 @@
     $link = fn (string $route, string $label, string|array $pattern) =>
         '<a href="'.route($route).'" class="rounded px-3 py-2 text-sm '.(request()->routeIs(...(array) $pattern) ? 'bg-slate-700 text-white' : 'text-slate-200 hover:bg-slate-700').'">'.e($label).'</a>';
     $canRegister = in_array($me->role, [\App\Enums\Role::Admin, \App\Enums\Role::Pendaftaran], true);
+    $canUniform = in_array($me->role, [\App\Enums\Role::Admin, \App\Enums\Role::Seragam], true);
     $canEnroll = in_array($me->role, [\App\Enums\Role::Admin, \App\Enums\Role::DaftarUlang], true);
 @endphp
 
@@ -28,9 +29,12 @@
             @if ($canEnroll)
                 {!! $link('enrollment.index', 'Daftar Ulang', 'enrollment.*') !!}
             @endif
+            @if ($canUniform)
+                {!! $link('seragam.index', 'Seragam', 'seragam.*') !!}
+            @endif
             @if ($me->isAdmin())
                 {!! $link('academic-years.index', 'Tahun Ajaran', 'academic-years.*') !!}
-                {!! $link('master.index', 'Master Data', ['master.*', 'schools.*', 'referrers.*', 'occupations.*', 'regions.*', 'discount-periods.*']) !!}
+                {!! $link('master.index', 'Master Data', ['master.*', 'schools.*', 'referrers.*', 'occupations.*', 'regions.*', 'discount-periods.*', 'uniform-types.*', 'uniform-sizes.*']) !!}
                 {!! $link('users.index', 'Akun', 'users.*') !!}
                 {!! $link('activity-logs.index', 'Log Aktivitas', 'activity-logs.*') !!}
             @endif

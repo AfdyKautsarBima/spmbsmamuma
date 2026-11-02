@@ -69,6 +69,21 @@ class Applicant extends Model
         return $this->hasOne(ApplicantBilling::class);
     }
 
+    public function uniformEntitlement(): HasOne
+    {
+        return $this->hasOne(UniformEntitlement::class);
+    }
+
+    public function uniformHandovers(): HasMany
+    {
+        return $this->hasMany(UniformHandover::class);
+    }
+
+    public function uniformSizes(): HasMany
+    {
+        return $this->hasMany(ApplicantUniformSize::class);
+    }
+
     /** Filter status daftar ulang di database: terdaftar | menyicil | lunas | mundur. */
     public function scopeEnrollmentStatus(Builder $query, ?string $status): Builder
     {

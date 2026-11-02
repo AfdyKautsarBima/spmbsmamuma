@@ -14,6 +14,9 @@ use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ReferrerController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\SeragamController;
+use App\Http\Controllers\UniformSizeController;
+use App\Http\Controllers\UniformTypeController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +63,16 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('kwitansi/{payment}', [EnrollmentController::class, 'receipt'])->name('enrollment.receipt');
     });
 
+    // Panitia seragam dan admin
+    Route::middleware('role:admin,seragam')->group(function () {
+        Route::get('seragam', [SeragamController::class, 'index'])->name('seragam.index');
+        Route::get('seragam/{applicant}', [SeragamController::class, 'show'])->name('seragam.show');
+        Route::get('seragam/{applicant}/bukti', [SeragamController::class, 'proof'])->name('seragam.proof');
+        Route::post('seragam/{applicant}/ukuran/{uniform_type}', [SeragamController::class, 'setSize'])->name('seragam.size');
+        Route::post('seragam/{applicant}/serah/{uniform_type}', [SeragamController::class, 'handOver'])->name('seragam.handover');
+        Route::post('seragam/{applicant}/batal/{uniform_type}', [SeragamController::class, 'cancelHandover'])->name('seragam.cancel');
+    });
+
     Route::middleware('role:admin')->group(function () {
         Route::delete('applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::patch('applicants/{applicant}/restore', [ApplicantController::class, 'restore'])->withTrashed()->name('applicants.restore');
@@ -81,6 +94,13 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::resource('discount-periods', DiscountPeriodController::class)->except(['show', 'destroy']);
         Route::patch('discount-periods/{discount_period}/toggle-active', [DiscountPeriodController::class, 'toggleActive'])
             ->name('discount-periods.toggle-active');
+
+        // Master seragam
+        Route::post('uniform-types/copy', [UniformTypeController::class, 'copy'])->name('uniform-types.copy');
+        Route::resource('uniform-types', UniformTypeController::class)->except(['show', 'destroy']);
+        Route::patch('uniform-types/{uniform_type}/toggle-active', [UniformTypeController::class, 'toggleActive'])->name('uniform-types.toggle-active');
+        Route::resource('uniform-sizes', UniformSizeController::class)->except(['show', 'destroy']);
+        Route::patch('uniform-sizes/{uniform_size}/toggle-active', [UniformSizeController::class, 'toggleActive'])->name('uniform-sizes.toggle-active');
 
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 

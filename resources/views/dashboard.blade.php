@@ -85,5 +85,38 @@
         </div>
     @endif
 
-    <p class="mt-6 text-sm text-slate-500">Menu seragam akan ditambahkan pada tahap berikutnya.</p>
+    @if ($uniform)
+        <div class="mt-4 rounded-lg bg-white p-4 shadow-sm">
+            <h2 class="mb-2 text-sm font-medium text-slate-500">Seragam</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+                <dl class="space-y-1 text-sm">
+                    <div class="flex justify-between"><dt>Murid berhak</dt><dd class="font-semibold">{{ $uniform['entitled'] }}</dd></div>
+                    <div class="flex justify-between"><dt>Berhak belum ambil</dt><dd>{{ $uniform['not_picked'] }}</dd></div>
+                    <div class="flex justify-between"><dt>Sebagian sudah diambil</dt><dd>{{ $uniform['partial'] }}</dd></div>
+                    <div class="flex justify-between"><dt>Sudah lengkap</dt><dd>{{ $uniform['complete'] }}</dd></div>
+                    <div class="flex justify-between border-t pt-1"><dt>Diserahkan hari ini</dt><dd>{{ $uniform['handed_today'] }} item ({{ $uniform['students_today'] }} murid)</dd></div>
+                </dl>
+                <div class="text-sm">
+                    @forelse ($uniform['size_recap'] as $typeName => $recap)
+                        <p class="mb-1 font-medium">Kebutuhan ukuran {{ $typeName }}</p>
+                        <p class="mb-2 text-slate-600">
+                            @forelse ($recap['sizes'] as $sizeName => $count){{ $sizeName }}: {{ $count }}@if (! $loop->last), @endif @empty Belum ada ukuran dicatat. @endforelse
+                            @if ($recap['missing'] > 0)<br><span class="text-amber-700">{{ $recap['missing'] }} murid berhak belum dicatat ukurannya.</span>@endif
+                        </p>
+                    @empty
+                        <p class="text-slate-500">Belum ada jenis seragam yang memakai ukuran.</p>
+                    @endforelse
+                </div>
+            </div>
+            @if (auth()->user()->isAdmin() && ($uniform['withdrawn_with_uniform'] > 0 || $uniform['below_threshold_with_uniform'] > 0))
+                <div class="mt-3 space-y-1 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                    @if ($uniform['withdrawn_with_uniform'] > 0)<p>{{ $uniform['withdrawn_with_uniform'] }} murid mundur dengan seragam sudah diambil.</p>@endif
+                    @if ($uniform['below_threshold_with_uniform'] > 0)<p>{{ $uniform['below_threshold_with_uniform'] }} murid pembayarannya di bawah ambang padahal seragam sudah diambil.</p>@endif
+                </div>
+            @endif
+            <a href="{{ route('seragam.index') }}" class="mt-3 inline-block rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-700">Buka menu seragam</a>
+        </div>
+    @endif
+
+    <p class="mt-6 text-sm text-slate-500">Laporan dan ekspor akan ditambahkan pada tahap berikutnya.</p>
 @endsection

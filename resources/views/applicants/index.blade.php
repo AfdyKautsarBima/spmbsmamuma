@@ -29,7 +29,7 @@
                 <option value="{{ $school->id }}" @selected((string) request('school_id') === (string) $school->id)>{{ $school->name }} ({{ $school->regency_name }})</option>
             @endforeach
         </select>
-        <input type="date" name="date" value="{{ request('date') }}" class="rounded border border-slate-300 px-3 py-2 text-sm" title="Tanggal input">
+        <x-date-input name="date" :value="request('date')" class="w-36" title="Tanggal input (dd/mm/yyyy)" />
         @if (auth()->user()->isAdmin())
             <select name="status" class="rounded border border-slate-300 px-3 py-2 text-sm">
                 <option value="">Data aktif</option>

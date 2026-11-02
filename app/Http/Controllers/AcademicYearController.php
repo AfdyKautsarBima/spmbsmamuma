@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use App\Models\ActivityLog;
+use App\Services\UniformService;
 
 class AcademicYearController extends Controller
 {
@@ -62,7 +63,15 @@ class AcademicYearController extends Controller
             ActivityLog::record('academic_year.updated', "Tahun ajaran {$academicYear->name} diubah", $academicYear, $old, $new);
         }
 
-        return redirect()->route('academic-years.index')->with('success', 'Tahun ajaran diperbarui.');
+        $message = 'Tahun ajaran diperbarui.';
+
+        // Ambang diturunkan: murid yang pembayarannya sudah cukup menjadi berhak. Hak yang ada tidak dicabut bila ambang dinaikkan.
+        if (array_key_exists('uniform_threshold_percent', $new) && $academicYear->is_active) {
+            $granted = app(UniformService::class)->syncYear($academicYear);
+            $message .= " {$granted} murid mendapat hak seragam baru.";
+        }
+
+        return redirect()->route('academic-years.index')->with('success', $message);
     }
 
     public function activate(AcademicYear $academicYear): RedirectResponse

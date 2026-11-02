@@ -17,11 +17,11 @@
         <div class="grid grid-cols-2 gap-3">
             <div>
                 <label for="starts_on" class="mb-1 block text-sm font-medium">Tanggal mulai</label>
-                <input id="starts_on" name="starts_on" type="date" required value="{{ old('starts_on', $period->starts_on?->format('Y-m-d')) }}" class="{{ $input }}">
+                <x-date-input id="starts_on" name="starts_on" :required="true" class="w-full" :value="old('starts_on', $period->starts_on?->format('d/m/Y'))" />
             </div>
             <div>
                 <label for="ends_on" class="mb-1 block text-sm font-medium">Tanggal akhir</label>
-                <input id="ends_on" name="ends_on" type="date" required value="{{ old('ends_on', $period->ends_on?->format('Y-m-d')) }}" class="{{ $input }}">
+                <x-date-input id="ends_on" name="ends_on" :required="true" class="w-full" :value="old('ends_on', $period->ends_on?->format('d/m/Y'))" />
             </div>
         </div>
         <div>

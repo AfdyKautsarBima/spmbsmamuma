@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\DateInput;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -14,8 +15,8 @@ class ActivityLogController extends Controller
         $logs = ActivityLog::with('user')
             ->when($request->event, fn ($q, $e) => $q->where('event', $e))
             ->when($request->user_id, fn ($q, $u) => $q->where('user_id', $u))
-            ->when($request->from, fn ($q, $d) => $q->where('created_at', '>=', $d.' 00:00:00'))
-            ->when($request->to, fn ($q, $d) => $q->where('created_at', '<=', $d.' 23:59:59'))
+            ->when(DateInput::iso($request->from), fn ($q, $d) => $q->where('created_at', '>=', $d.' 00:00:00'))
+            ->when(DateInput::iso($request->to), fn ($q, $d) => $q->where('created_at', '<=', $d.' 23:59:59'))
             ->when($request->q, fn ($q, $s) => $q->where('description', 'like', "%{$s}%"))
             ->orderByDesc('id')
             ->paginate(30)

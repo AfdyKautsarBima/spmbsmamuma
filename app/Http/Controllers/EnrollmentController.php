@@ -7,6 +7,7 @@ use App\Models\Applicant;
 use App\Models\Payment;
 use App\Services\DocumentChecklist;
 use App\Services\EnrollmentService;
+use App\Support\DateInput;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -86,10 +87,14 @@ class EnrollmentController extends Controller
 
     public function withdraw(Request $request, Applicant $applicant): RedirectResponse
     {
+        $request->merge(['date' => DateInput::toIso($request->input('date'))]);
         $data = $request->validate([
             'date'   => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'reason' => ['required', 'string', 'min:3', 'max:255'],
-        ], [], ['date' => 'tanggal', 'reason' => 'alasan']);
+        ], [
+            'date.date_format'     => 'Tanggal harus berformat dd/mm/yyyy, misalnya 25/12/2026.',
+            'date.before_or_equal' => 'Tanggal tidak boleh melewati hari ini.',
+        ], ['date' => 'tanggal', 'reason' => 'alasan']);
 
         return $this->attempt(
             fn () => $this->enrollment->withdraw($applicant, $data['date'], $data['reason'], $request->user()),

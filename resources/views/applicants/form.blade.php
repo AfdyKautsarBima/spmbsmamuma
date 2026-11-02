@@ -90,9 +90,8 @@
                 </div>
                 <div>
                     <label for="birth_date" class="mb-1 block text-sm font-medium">Tanggal lahir</label>
-                    <input id="birth_date" name="birth_date" type="date" required max="{{ today()->format('Y-m-d') }}"
-                           value="{{ old('birth_date', $applicant->birth_date?->format('Y-m-d')) }}"
-                           class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    <x-date-input id="birth_date" name="birth_date" :required="true" class="w-full"
+                                  :value="old('birth_date', $applicant->birth_date?->format('d/m/Y'))" />
                     @error('birth_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
             </div>

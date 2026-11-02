@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\Region;
+use App\Support\DateInput;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -33,6 +34,7 @@ class ApplicantRequest extends FormRequest
 
         $this->merge([
             'registration_number' => $number,
+            'birth_date'          => DateInput::toIso($this->input('birth_date')),
             'name'                => $collapse($this->input('name')),
             'birth_place'         => $collapse($this->input('birth_place')),
             'father_name'         => $collapse($this->input('father_name')),
@@ -152,6 +154,9 @@ class ApplicantRequest extends FormRequest
             'registration_number.regex'  => 'Format nomor harus A- diikuti angka, misalnya A-001 (minimal 3 angka).',
             'village_code.required'      => 'Pilih alamat sampai desa/kelurahan.',
             'village_code.exists'        => 'Pilih alamat sampai desa/kelurahan.',
+            'birth_date.date_format'     => 'Tanggal lahir harus berformat dd/mm/yyyy, misalnya 25/12/2010.',
+            'birth_date.before_or_equal' => 'Tanggal lahir tidak boleh melewati hari ini.',
+            'birth_date.after'           => 'Tanggal lahir tidak wajar.',
             'phone.regex'                => 'Nomor HP hanya berisi angka, diawali 08, panjang 10 sampai 13 digit.',
             'school_id.exists'           => 'Pilih asal sekolah dari daftar. Bila belum ada, minta admin menambahkannya.',
             'rt.regex'                   => 'RT berupa angka 1 sampai 3 digit.',

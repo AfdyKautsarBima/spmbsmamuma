@@ -17,8 +17,8 @@
                 <option value="{{ $u->id }}" @selected((string) request('user_id') === (string) $u->id)>{{ $u->name }} ({{ $u->username }})</option>
             @endforeach
         </select>
-        <input type="date" name="from" value="{{ request('from') }}" class="rounded border border-slate-300 px-3 py-2 text-sm">
-        <input type="date" name="to" value="{{ request('to') }}" class="rounded border border-slate-300 px-3 py-2 text-sm">
+        <x-date-input name="from" :value="request('from')" class="w-36" title="Dari tanggal (dd/mm/yyyy)" />
+        <x-date-input name="to" :value="request('to')" class="w-36" title="Sampai tanggal (dd/mm/yyyy)" />
         <input name="q" value="{{ request('q') }}" placeholder="Cari keterangan" class="rounded border border-slate-300 px-3 py-2 text-sm">
         <button class="rounded border px-4 py-2 text-sm hover:bg-white">Filter</button>
     </form>
