@@ -22,6 +22,7 @@
         <span class="mr-4 font-semibold text-white">SPMB SMA</span>
         <nav class="flex flex-wrap gap-1">
             {!! $link('dashboard', 'Dashboard', 'dashboard') !!}
+            {!! $link('reports.index', 'Laporan', 'reports.*') !!}
             @if ($canRegister)
                 {!! $link('applicants.index', 'Pendaftar', 'applicants.*') !!}
                 {!! $link('documents.index', 'Cek Berkas', 'documents.*') !!}

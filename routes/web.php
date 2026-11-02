@@ -12,6 +12,7 @@ use App\Http\Controllers\MasterController;
 use App\Http\Controllers\OccupationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ReferrerController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SeragamController;
@@ -33,6 +34,10 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::get('/password', [PasswordController::class, 'edit'])->name('password.edit');
     Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
+
+    // Laporan: izin per laporan diperiksa di ReportController
+    Route::get('laporan', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('laporan/{key}', [ReportController::class, 'show'])->where('key', '[a-z\-]+')->name('reports.show');
 
     // Panitia pendaftaran dan admin
     Route::middleware('role:admin,pendaftaran')->group(function () {
