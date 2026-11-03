@@ -6,9 +6,14 @@ use App\Http\Requests\SchoolRequest;
 use App\Models\ActivityLog;
 use App\Models\Region;
 use App\Models\School;
+use App\Reports\Report;
+use App\Services\SchoolImportService;
+use App\Support\XlsxWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class SchoolController extends Controller
 {
@@ -45,6 +50,43 @@ class SchoolController extends Controller
         ]);
 
         return redirect()->route('schools.index')->with('success', "Sekolah {$school->name} ditambahkan.");
+    }
+
+    public function import(Request $request, SchoolImportService $importer): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240', 'extensions:xlsx'],
+        ], [
+            'file.required' => 'Pilih file Excel yang akan diimpor.',
+            'file.extensions' => 'File harus berformat .xlsx.',
+        ]);
+
+        try {
+            $count = $importer->import($request->file('file'));
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['file' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('schools.index')->with('success', "{$count} sekolah berhasil diimpor.");
+    }
+
+    public function importTemplate(): Response
+    {
+        $report = (new Report('Template Import Sekolah'))
+            ->section(
+                null,
+                [
+                    Report::col('Nama Sekolah'),
+                    Report::col('NPSN'),
+                    Report::col('Kode Kabupaten/Kota'),
+                ],
+                [],
+            );
+
+        return response(XlsxWriter::toString($report), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="template-import-sekolah.xlsx"',
+        ]);
     }
 
     public function edit(School $school): View

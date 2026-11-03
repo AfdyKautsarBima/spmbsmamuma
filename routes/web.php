@@ -12,8 +12,8 @@ use App\Http\Controllers\MasterController;
 use App\Http\Controllers\OccupationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ReferrerController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RegionController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SeragamController;
 use App\Http\Controllers\UniformSizeController;
@@ -113,6 +113,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('master', [MasterController::class, 'index'])->name('master.index');
         Route::get('master/wilayah', [RegionController::class, 'index'])->name('regions.index');
 
+        Route::get('schools/import-template', [SchoolController::class, 'importTemplate'])->name('schools.import-template');
+        Route::post('schools/import', [SchoolController::class, 'import'])->name('schools.import');
         Route::resource('schools', SchoolController::class)->except(['show', 'destroy']);
         Route::patch('schools/{school}/toggle-active', [SchoolController::class, 'toggleActive'])
             ->name('schools.toggle-active');
