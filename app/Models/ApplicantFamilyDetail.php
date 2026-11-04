@@ -11,7 +11,7 @@ class ApplicantFamilyDetail extends Model
         'applicant_id', 'academic_year_id', 'kk_number', 'student_nik',
         'father_absent', 'father_nik', 'father_birth_year', 'father_occupation_id',
         'mother_absent', 'mother_nik', 'mother_birth_year', 'mother_occupation_id',
-        'guardian_name', 'guardian_nik', 'guardian_relation', 'guardian_occupation_id', 'guardian_phone',
+        'guardian_name', 'guardian_nik', 'guardian_birth_year', 'guardian_relation', 'guardian_occupation_id', 'guardian_phone',
     ];
 
     protected function casts(): array
@@ -21,6 +21,7 @@ class ApplicantFamilyDetail extends Model
             'mother_absent'     => 'boolean',
             'father_birth_year' => 'integer',
             'mother_birth_year' => 'integer',
+            'guardian_birth_year' => 'integer',
         ];
     }
 

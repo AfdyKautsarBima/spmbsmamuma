@@ -175,12 +175,13 @@ class DocumentRequest extends FormRequest
         }
 
         $absent = (int) $this->boolean('family.father_absent') + (int) $this->boolean('family.mother_absent');
-        $guardianFilled = collect(['guardian_name', 'guardian_nik', 'guardian_relation', 'guardian_occupation_id', 'guardian_phone'])
+        $guardianFilled = collect(['guardian_name', 'guardian_nik', 'guardian_birth_year', 'guardian_relation', 'guardian_occupation_id', 'guardian_phone'])
             ->contains(fn ($k) => filled($this->input("family.{$k}")));
 
         if ($absent >= 1 && ($absent === 2 || $guardianFilled)) {
             $rules['family.guardian_name'] = ['required', 'string', 'max:100'];
             $rules['family.guardian_nik'] = ['required', 'digits:16'];
+            $rules['family.guardian_birth_year'] = ['nullable', 'integer', "between:{$minYear},{$maxYear}"];
             $rules['family.guardian_relation'] = ['required', 'string', 'max:50'];
             $rules['family.guardian_occupation_id'] = ['required', $occupation];
             $rules['family.guardian_phone'] = ['nullable', 'regex:/^08\d{8,11}$/'];
@@ -210,6 +211,7 @@ class DocumentRequest extends FormRequest
             'family.mother_occupation_id'    => 'pekerjaan ibu',
             'family.guardian_name'           => 'nama wali',
             'family.guardian_nik'            => 'NIK wali',
+            'family.guardian_birth_year'     => 'tahun lahir wali',
             'family.guardian_relation'       => 'hubungan wali',
             'family.guardian_occupation_id'  => 'pekerjaan wali',
             'family.guardian_phone'          => 'nomor HP wali',
@@ -227,6 +229,7 @@ class DocumentRequest extends FormRequest
         return [
             'family.father_birth_year.between' => 'Tahun lahir ayah tidak wajar (minimal 1920 dan sedikitnya 12 tahun lebih tua dari murid).',
             'family.mother_birth_year.between' => 'Tahun lahir ibu tidak wajar (minimal 1920 dan sedikitnya 12 tahun lebih tua dari murid).',
+            'family.guardian_birth_year.between' => 'Tahun lahir wali tidak wajar (minimal 1920 dan sedikitnya 12 tahun lebih tua dari murid).',
             'family.guardian_phone.regex'      => 'Nomor HP wali hanya berisi angka, diawali 08, panjang 10 sampai 13 digit.',
             'digits'                           => ':attribute harus :digits digit angka.',
             'digits_between'                   => ':attribute harus berupa angka dengan panjang :min sampai :max digit.',

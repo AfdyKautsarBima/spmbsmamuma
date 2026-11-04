@@ -165,6 +165,10 @@
                         <input name="family[guardian_nik]" inputmode="numeric" maxlength="16" value="{{ old('family.guardian_nik', $family->guardian_nik) }}" class="{{ $input }}">
                     </div>
                     <div>
+                        <label class="mb-1 block text-sm">Tahun lahir wali</label>
+                        <input name="family[guardian_birth_year]" inputmode="numeric" maxlength="4" value="{{ old('family.guardian_birth_year', $family->guardian_birth_year) }}" class="{{ $input }}">
+                    </div>
+                    <div>
                         <label class="mb-1 block text-sm">Hubungan dengan murid</label>
                         <input name="family[guardian_relation]" list="guardian-relations" value="{{ old('family.guardian_relation', $family->guardian_relation) }}" class="{{ $input }}">
                         <datalist id="guardian-relations">

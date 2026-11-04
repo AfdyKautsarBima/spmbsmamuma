@@ -41,6 +41,7 @@ class ReportBuilder
         return match ($key) {
             'pendaftar'          => $this->pendaftar($year, $f),
             'berkas-kurang'      => $this->berkasKurang($year),
+            'rekap-cek-berkas'   => $this->rekapCekBerkas($year),
             'siswa-yatim'        => $this->siswaYatim($year),
             'siswa-berprestasi'  => $this->siswaBerprestasi($year),
             'daftar-ulang'       => $this->daftarUlang($year, $f),
@@ -124,6 +125,91 @@ class ReportBuilder
 
         return (new Report('Daftar Berkas Kurang', $this->sub($year), [count($rows).' pendaftar berkasnya belum lengkap.']))
             ->section(null, array_map(fn ($l) => Report::col($l), ['No', 'Nomor', 'Nama', 'Asal sekolah', 'No. HP', 'Berkas yang kurang']), $rows);
+    }
+
+    private function rekapCekBerkas(AcademicYear $year): Report
+    {
+        $applicants = Applicant::with([
+            'school',
+            'documents',
+            'familyDetail.fatherOccupation',
+            'familyDetail.motherOccupation',
+            'familyDetail.guardianOccupation',
+        ])
+            ->where('academic_year_id', $year->id)
+            ->orderBy('registration_seq')
+            ->get();
+
+        $documentTypes = DocumentType::cases();
+        $columns = array_map(fn ($type) => Report::col('Status: '.$type->label()), $documentTypes);
+        $columns = [
+            Report::col('No'),
+            Report::col('Nomor pendaftaran'),
+            Report::col('Nama siswa'),
+            Report::col('Asal sekolah'),
+            Report::col('No. HP'),
+            Report::col('NIK murid'),
+            Report::col('Nama ayah'),
+            Report::col('NIK ayah'),
+            Report::col('Pekerjaan ayah'),
+            Report::col('Tahun lahir ayah'),
+            Report::col('Nama ibu'),
+            Report::col('NIK ibu'),
+            Report::col('Pekerjaan ibu'),
+            Report::col('Tahun lahir ibu'),
+            Report::col('Nama wali'),
+            Report::col('NIK wali'),
+            Report::col('Pekerjaan wali'),
+            Report::col('Tahun lahir wali'),
+            Report::col('Nomor KK'),
+            Report::col('Nomor KIP'),
+            Report::col('Nomor KKS/PKH'),
+            Report::col('Kelengkapan berkas'),
+            ...$columns,
+            Report::col('Jenis peringkat'),
+            Report::col('Peringkat'),
+        ];
+
+        $rows = [];
+        foreach ($applicants as $i => $applicant) {
+            $statusMap = $this->checklist->statusMap($applicant);
+            $documents = $applicant->documents->keyBy(fn ($document) => $document->type->value);
+            $family = $applicant->familyDetail;
+            $ranking = $documents->get(DocumentType::SuratPeringkat->value);
+            $complete = $this->checklist->isComplete($statusMap, $this->checklist->absentParents($applicant));
+
+            $rows[] = [
+                $i + 1,
+                $applicant->registration_number,
+                $applicant->name,
+                $applicant->school->name,
+                $applicant->phone ?? '',
+                $family?->student_nik ?? '',
+                $applicant->father_name,
+                $family?->father_nik ?? '',
+                $family?->fatherOccupation?->name ?? '',
+                $family?->father_birth_year ?? '',
+                $applicant->mother_name,
+                $family?->mother_nik ?? '',
+                $family?->motherOccupation?->name ?? '',
+                $family?->mother_birth_year ?? '',
+                $family?->guardian_name ?? '',
+                $family?->guardian_nik ?? '',
+                $family?->guardianOccupation?->name ?? '',
+                $family?->guardian_birth_year ?? '',
+                $family?->kk_number ?? '',
+                $documents->get(DocumentType::Pkh->value)?->card_number ?? '',
+                $documents->get(DocumentType::Kks->value)?->card_number ?? '',
+                $complete ? 'Lengkap' : 'Belum lengkap',
+                ...array_map(fn ($type) => $statusMap[$type->value]->label(), $documentTypes),
+                $ranking?->ranking_type ? ucfirst($ranking->ranking_type) : '',
+                $ranking?->rank_position ?? '',
+            ];
+        }
+
+        return (new Report('Rekap Data Lengkap Siswa', $this->sub($year), [
+            count($rows).' pendaftar; status yang tidak memiliki catatan berkas ditampilkan sebagai Belum diterima.',
+        ]))->section(null, $columns, $rows);
     }
 
     private function siswaYatim(AcademicYear $year): Report

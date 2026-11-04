@@ -227,6 +227,7 @@ class DocumentController extends Controller
             'mother_occupation_id'   => $motherAbsent ? null : (int) $kk['mother_occupation_id'],
             'guardian_name'          => $guardianFilled ? $kk['guardian_name'] : null,
             'guardian_nik'           => $guardianFilled ? $kk['guardian_nik'] : null,
+            'guardian_birth_year'    => $guardianFilled && filled($kk['guardian_birth_year'] ?? null) ? (int) $kk['guardian_birth_year'] : null,
             'guardian_relation'      => $guardianFilled ? $kk['guardian_relation'] : null,
             'guardian_occupation_id' => $guardianFilled ? (int) $kk['guardian_occupation_id'] : null,
             'guardian_phone'         => $guardianFilled ? ($kk['guardian_phone'] ?? null) : null,

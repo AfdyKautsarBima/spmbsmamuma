@@ -4,15 +4,18 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Enums\DocumentStatus;
+use App\Enums\DocumentType;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
+use App\Models\ApplicantFamilyDetail;
 use App\Models\DiscountPeriod;
 use App\Models\Payment;
 use App\Models\Referrer;
 use App\Models\School;
 use App\Models\UniformSize;
 use App\Models\UniformType;
+use App\Models\Occupation;
 use App\Models\User;
 use App\Reports\Report;
 use App\Reports\ReportBuilder;
@@ -151,20 +154,21 @@ class ReportTest extends TestCase
     public function test_index_lists_only_reports_allowed_for_the_role(): void
     {
         $this->actingAs($this->admin)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Reward Pembawa')->assertSee('Daftar Pendaftar')->assertSee('Rekap Siswa Yatim')->assertSee('Rekap Siswa Berprestasi')->assertSee('Rekap Pembayaran Harian')->assertSee('Rekap Penyerahan Seragam')
+            ->assertSee('Rekap Reward Pembawa')->assertSee('Daftar Pendaftar')->assertSee('Rekap Data Lengkap Siswa')->assertSee('Rekap Siswa Yatim')->assertSee('Rekap Siswa Berprestasi')->assertSee('Rekap Pembayaran Harian')->assertSee('Rekap Penyerahan Seragam')
             ->assertDontSee('Rincian Pembawa');
         $this->actingAs($this->reg)->get('/laporan')->assertOk()
-            ->assertSee('Daftar Pendaftar')->assertSee('Daftar Berkas Kurang')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi')->assertDontSee('Rekap Reward Pembawa')->assertDontSee('Rekap Pembayaran Harian');
+            ->assertSee('Daftar Pendaftar')->assertSee('Daftar Berkas Kurang')->assertSee('Rekap Data Lengkap Siswa')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi')->assertDontSee('Rekap Reward Pembawa')->assertDontSee('Rekap Pembayaran Harian');
         $this->actingAs($this->clerk)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Pembayaran Harian')->assertSee('Daftar Tunggakan')->assertDontSee('Daftar Pendaftar')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi')->assertDontSee('Rekap Reward Pembawa');
+            ->assertSee('Rekap Pembayaran Harian')->assertSee('Daftar Tunggakan')->assertDontSee('Daftar Pendaftar')->assertDontSee('Rekap Data Lengkap Siswa')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi')->assertDontSee('Rekap Reward Pembawa');
         $this->actingAs($this->staff)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Kebutuhan Ukuran Seragam')->assertDontSee('Daftar Tunggakan')->assertDontSee('Rekap Pembayaran Harian')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi');
+            ->assertSee('Rekap Kebutuhan Ukuran Seragam')->assertDontSee('Daftar Tunggakan')->assertDontSee('Rekap Pembayaran Harian')->assertDontSee('Rekap Data Lengkap Siswa')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi');
     }
 
     public function test_report_access_rules(): void
     {
         $allowed = [
             'pendaftar' => [$this->admin, $this->reg], 'berkas-kurang' => [$this->admin, $this->reg],
+            'rekap-cek-berkas' => [$this->admin, $this->reg],
             'daftar-ulang' => [$this->admin, $this->clerk], 'pembayaran-harian' => [$this->admin, $this->clerk],
             'tunggakan' => [$this->admin, $this->clerk], 'keuangan' => [$this->admin, $this->clerk], 'diskon' => [$this->admin, $this->clerk],
             'reward' => [$this->admin],
@@ -236,6 +240,89 @@ class ReportTest extends TestCase
 
         $this->assertSame(['Murid Kurang'], $this->names($report, 2));
         $this->assertStringContainsString('Akta kelahiran', $this->rows($report)[0][5]);
+    }
+
+    public function test_document_check_report_includes_all_applicants_and_document_statuses(): void
+    {
+        $complete = $this->applicant(1, ['name' => 'Berkas Lengkap', 'documents_complete' => true]);
+        $incomplete = $this->applicant(2, ['name' => 'Berkas Belum Lengkap', 'school_id' => $this->school2->id]);
+        $occupation = Occupation::create(['name' => 'Wiraswasta', 'sort_order' => 1, 'is_active' => true]);
+        ApplicantFamilyDetail::create([
+            'applicant_id' => $complete->id,
+            'academic_year_id' => $this->year->id,
+            'kk_number' => '3319010101010001',
+            'student_nik' => '3319014501100001',
+            'father_nik' => '3319010101800001',
+            'father_birth_year' => 1980,
+            'father_occupation_id' => $occupation->id,
+            'mother_nik' => '3319014101850001',
+            'mother_birth_year' => 1985,
+            'mother_occupation_id' => $occupation->id,
+            'guardian_name' => 'Kakek Siswa',
+            'guardian_nik' => '3319010101500009',
+            'guardian_birth_year' => 1950,
+            'guardian_occupation_id' => $occupation->id,
+        ]);
+        foreach (DocumentType::cases() as $type) {
+            if ($type->group() === 'wajib' || in_array($type, [DocumentType::KtpAyah, DocumentType::KtpIbu], true)) {
+                ApplicantDocument::create([
+                    'applicant_id' => $complete->id,
+                    'type' => $type,
+                    'status' => DocumentStatus::Diterima,
+                ]);
+            }
+        }
+        ApplicantDocument::create(['applicant_id' => $complete->id, 'type' => DocumentType::Sktm, 'status' => DocumentStatus::TidakAda]);
+        ApplicantDocument::create([
+            'applicant_id' => $complete->id, 'type' => DocumentType::Kks, 'status' => DocumentStatus::Diterima,
+            'card_number' => 'KKS-123',
+        ]);
+        ApplicantDocument::create([
+            'applicant_id' => $complete->id, 'type' => DocumentType::Pkh, 'status' => DocumentStatus::Diterima,
+            'card_number' => 'KIP-456',
+        ]);
+        ApplicantDocument::create([
+            'applicant_id' => $complete->id, 'type' => DocumentType::SuratPeringkat, 'status' => DocumentStatus::Diterima,
+            'ranking_type' => 'paralel', 'rank_position' => 2,
+        ]);
+        ApplicantDocument::create(['applicant_id' => $complete->id, 'type' => DocumentType::Sertifikat, 'status' => DocumentStatus::TidakAda]);
+
+        $report = $this->build('rekap-cek-berkas');
+        $rows = $this->rows($report);
+        $columns = array_column($report->sections[0]['columns'], 'label');
+        $column = fn (string $label) => array_search($label, $columns, true);
+
+        $this->assertSame(['Berkas Lengkap', 'Berkas Belum Lengkap'], $this->names($report, 2));
+        $this->assertSame('Lengkap', $rows[0][$column('Kelengkapan berkas')]);
+        $this->assertSame('Belum lengkap', $rows[1][$column('Kelengkapan berkas')]);
+        $this->assertSame('Diterima', $rows[0][$column('Status: Kartu KKS/PKH')]);
+        $this->assertSame('Tidak ada', $rows[0][$column('Status: Sertifikat kejuaraan')]);
+        $this->assertSame('Belum diterima', $rows[1][$column('Status: KTP ayah')]);
+        $this->assertSame('3319014501100001', $rows[0][$column('NIK murid')]);
+        $this->assertSame('Ayah 1', $rows[0][$column('Nama ayah')]);
+        $this->assertSame('3319010101800001', $rows[0][$column('NIK ayah')]);
+        $this->assertSame('Wiraswasta', $rows[0][$column('Pekerjaan ayah')]);
+        $this->assertSame(1980, $rows[0][$column('Tahun lahir ayah')]);
+        $this->assertSame('Ibu 1', $rows[0][$column('Nama ibu')]);
+        $this->assertSame('3319014101850001', $rows[0][$column('NIK ibu')]);
+        $this->assertSame('Wiraswasta', $rows[0][$column('Pekerjaan ibu')]);
+        $this->assertSame(1985, $rows[0][$column('Tahun lahir ibu')]);
+        $this->assertSame('Kakek Siswa', $rows[0][$column('Nama wali')]);
+        $this->assertSame('3319010101500009', $rows[0][$column('NIK wali')]);
+        $this->assertSame('Wiraswasta', $rows[0][$column('Pekerjaan wali')]);
+        $this->assertSame(1950, $rows[0][$column('Tahun lahir wali')]);
+        $this->assertSame('3319010101010001', $rows[0][$column('Nomor KK')]);
+        $this->assertSame('KIP-456', $rows[0][$column('Nomor KIP')]);
+        $this->assertSame('KKS-123', $rows[0][$column('Nomor KKS/PKH')]);
+        $this->assertSame('Paralel', $rows[0][$column('Jenis peringkat')]);
+        $this->assertSame(2, $rows[0][$column('Peringkat')]);
+        $this->assertSame(count(DocumentType::cases()) + 24, count($columns));
+
+        $this->actingAs($this->reg)->get('/laporan/rekap-cek-berkas')->assertOk()
+            ->assertSee('Berkas Lengkap')->assertSee('Berkas Belum Lengkap')
+            ->assertSee('Rekap Data Lengkap Siswa')->assertSee('KKS-123')->assertSee('Belum diterima')
+            ->assertSee('3319014501100001')->assertSee('1950');
+        $this->actingAs($this->clerk)->get('/laporan/rekap-cek-berkas')->assertForbidden();
     }
 
     public function test_orphan_report_includes_applicants_missing_either_parent_ktp_once(): void

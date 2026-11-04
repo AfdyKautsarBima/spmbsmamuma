@@ -429,10 +429,11 @@ class DocumentTest extends TestCase
             'family.guardian_name', 'family.guardian_nik', 'family.guardian_relation', 'family.guardian_occupation_id',
         ]);
 
-        $guardian = ['guardian_name' => 'Pak Dhe', 'guardian_nik' => '3319010101700009', 'guardian_relation' => 'Paman',
+        $guardian = ['guardian_name' => 'Pak Dhe', 'guardian_nik' => '3319010101700009', 'guardian_birth_year' => '1970', 'guardian_relation' => 'Paman',
             'guardian_occupation_id' => $this->job->id, 'guardian_phone' => '081234567890'];
         $this->submit($a, $this->docs(['kk' => 'diterima']), ['family' => $both + $guardian])->assertSessionHasNoErrors();
         $this->assertSame('Pak Dhe', $a->fresh()->familyDetail->guardian_name);
+        $this->assertSame(1970, $a->fresh()->familyDetail->guardian_birth_year);
 
         // satu orang tua tidak ada: wali opsional
         $one = $this->family(['father_absent' => '1']);
