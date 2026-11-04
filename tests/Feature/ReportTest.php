@@ -225,10 +225,14 @@ class ReportTest extends TestCase
         $this->assertSame('25/12/2010', $this->rows($all)[0][5]);
 
         $this->assertSame(['Murid B'], $this->names($this->build('pendaftar', ['school_id' => $this->school2->id]), 2));
+        $this->assertSame(['Murid A', 'Murid B'], $this->names($this->build('pendaftar', ['school_id' => [$this->school->id, $this->school2->id]]), 2));
         $this->assertSame(['Murid B'], $this->names($this->build('pendaftar', ['from' => '2026-12-05']), 2));
         $this->assertSame(['Murid A'], $this->names($this->build('pendaftar', ['to' => '2026-12-04']), 2));
 
         $this->actingAs($this->reg)->get('/laporan/pendaftar?from=05/12/2026')->assertSee('Murid B')->assertDontSee('Murid A');
+        $this->actingAs($this->reg)->get('/laporan/pendaftar?school_id[]='.$this->school->id.'&school_id[]='.$this->school2->id)
+            ->assertOk()->assertSee('Murid A')->assertSee('Murid B')
+            ->assertSee('type="checkbox" name="school_id[]"', false);
     }
 
     public function test_missing_documents_report(): void
@@ -407,10 +411,16 @@ class ReportTest extends TestCase
 
         $this->assertSame(['Murid A', 'Murid B', 'Murid C', 'Murid D', 'Murid E', 'Murid F', 'Murid G'], $names(null));
         $this->assertSame(['Murid A', 'Murid B', 'Murid F'], $names('sudah'));
+        $this->assertSame(['Murid A', 'Murid B', 'Murid D', 'Murid E', 'Murid F'], $this->names(
+            $this->build('daftar-ulang', ['status' => ['sudah', 'mundur']]), 2
+        ));
         $this->assertSame(['Murid C', 'Murid G'], $names('belum'));
         $this->assertSame(['Murid A', 'Murid F'], $names('menyicil'));
         $this->assertSame(['Murid B'], $names('lunas'));
         $this->assertSame(['Murid D', 'Murid E'], $names('mundur'));
+        $this->actingAs($this->clerk)->get('/laporan/daftar-ulang?status[]=sudah&status[]=mundur')
+            ->assertOk()->assertSee('Murid A')->assertSee('Murid D')->assertDontSee('Murid C')
+            ->assertSee('type="checkbox" name="status[]"', false);
     }
 
     public function test_daily_payments_report_totals_per_day_and_per_receiver(): void
@@ -585,6 +595,10 @@ class ReportTest extends TestCase
         $incomplete = $this->build('seragam-belum-ambil', ['scope' => 'belum_lengkap']);
         $this->assertSame(['Murid S1', 'Murid S2'], $this->names($incomplete, 2));
         $this->assertSame('1/2: Baju Putih', $this->rows($incomplete)[1][7]);
+        $bothScopes = $this->build('seragam-belum-ambil', ['scope' => ['belum', 'belum_lengkap']]);
+        $this->assertSame(['Murid S1', 'Murid S2'], $this->names($bothScopes, 2));
+        $this->actingAs($this->staff)->get('/laporan/seragam-belum-ambil?scope[]=belum&scope[]=belum_lengkap')
+            ->assertOk()->assertSee('type="checkbox" name="scope[]"', false);
     }
 
     public function test_uniform_handover_report_counts_per_type_and_day(): void
@@ -612,6 +626,10 @@ class ReportTest extends TestCase
         $notPicked = $this->build('seragam-ukuran', ['scope' => 'belum_diambil']);
         $this->assertSame([['M', 1], ['Ukuran belum dicatat', 1]], $this->rows($notPicked));       // S3 sudah ambil olahraga
         $this->assertSame(['Total murid berhak', 2], $this->footer($notPicked));
+        $bothScopes = $this->build('seragam-ukuran', ['scope' => ['semua', 'belum_diambil']]);
+        $this->assertSame([['M', 1], ['L', 1], ['Ukuran belum dicatat', 1]], $this->rows($bothScopes));
+        $this->actingAs($this->staff)->get('/laporan/seragam-ukuran')->assertOk()
+            ->assertSee('type="checkbox" name="scope[]"', false);
     }
 
     public function test_withdrawn_with_uniform_report_and_privacy_for_uniform_staff(): void
@@ -696,6 +714,12 @@ class ReportTest extends TestCase
     public function test_screen_view_offers_excel_and_print(): void
     {
         $this->actingAs($this->admin)->get('/laporan/pendaftar')
-            ->assertOk()->assertSee('Unduh Excel')->assertSee('Cetak / Simpan PDF')->assertSee('format=xlsx', false)->assertSee('format=print', false);
+            ->assertOk()->assertSee('Unduh Excel')->assertSee('Cetak / Simpan PDF')->assertSee('format=xlsx', false)->assertSee('format=print', false)
+            ->assertSee('type="checkbox" name="school_id[]"', false);
+        $this->actingAs($this->clerk)->get('/laporan/daftar-ulang')
+            ->assertOk()->assertSee('type="checkbox" name="status[]"', false)
+            ->assertSee('style="width: 180px;"', false)
+            ->assertSee('style="height: 38px; display: flex;"', false)
+            ->assertSee('<svg width="16" height="16"', false);
     }
 }

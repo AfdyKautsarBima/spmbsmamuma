@@ -89,7 +89,12 @@ class ReportBuilder
             ->where('academic_year_id', $year->id)
             ->when($f['from'], fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
             ->when($f['to'], fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
-            ->when($f['school_id'], fn ($q, $id) => $q->where('school_id', $id))
+            ->when($f['school_id'], function ($q, $ids) {
+                $ids = array_values(array_filter((array) $ids, fn ($id) => ctype_digit((string) $id) && (int) $id > 0));
+                if ($ids) {
+                    $q->whereIn('school_id', $ids);
+                }
+            })
             ->orderBy('registration_seq')
             ->get();
 
@@ -296,14 +301,27 @@ class ReportBuilder
 
     private function daftarUlang(AcademicYear $year, array $f): Report
     {
-        $wanted = match ($f['status']) {
-            'sudah'     => ['menyicil', 'lunas'],
-            'belum'     => ['terdaftar'],
-            'menyicil'  => ['menyicil'],
-            'lunas'     => ['lunas'],
-            'mundur'    => ['mundur'],
-            default     => null,
-        };
+        $selectedStatuses = array_values(array_intersect((array) $f['status'], ['sudah', 'belum', 'menyicil', 'lunas', 'mundur']));
+        if (! $selectedStatuses && is_string($f['status']) && in_array($f['status'], ['sudah', 'belum', 'menyicil', 'lunas', 'mundur'], true)) {
+            $selectedStatuses = [$f['status']];
+        }
+        $wanted = [];
+        foreach ($selectedStatuses as $status) {
+            $wanted = array_merge($wanted, match ($status) {
+                'sudah' => ['menyicil', 'lunas'],
+                'belum' => ['terdaftar'],
+                default => [$status],
+            });
+        }
+        $wanted = array_values(array_unique($wanted));
+        $statusLabels = [
+            'sudah' => 'Sudah daftar ulang',
+            'belum' => 'Belum daftar ulang',
+            'menyicil' => 'Menyicil',
+            'lunas' => 'Lunas',
+            'mundur' => 'Mengundurkan diri',
+        ];
+        $label = implode(', ', array_map(fn ($status) => $statusLabels[$status], $selectedStatuses)) ?: null;
 
         $applicants = Applicant::with(['school', 'billing', 'payments' => $this->validPayments()])
             ->where('academic_year_id', $year->id)
@@ -325,8 +343,6 @@ class ReportBuilder
                 $first?->format('d/m/Y') ?? '',
             ];
         }
-
-        $label = ['sudah' => 'Sudah daftar ulang', 'belum' => 'Belum daftar ulang', 'menyicil' => 'Menyicil', 'lunas' => 'Lunas', 'mundur' => 'Mengundurkan diri'][$f['status']] ?? null;
 
         return (new Report('Daftar Daftar Ulang', $this->sub($year, $label), [$n.' pendaftar.']))
             ->section(null, [
@@ -603,7 +619,11 @@ class ReportBuilder
 
     private function seragamBelumAmbil(AcademicYear $year, array $f): Report
     {
-        $incomplete = $f['scope'] === 'belum_lengkap';
+        $selectedScopes = array_values(array_intersect((array) $f['scope'], ['belum', 'belum_lengkap']));
+        if (! $selectedScopes && is_string($f['scope']) && in_array($f['scope'], ['belum', 'belum_lengkap'], true)) {
+            $selectedScopes = [$f['scope']];
+        }
+        $incomplete = in_array('belum_lengkap', $selectedScopes, true);
         $typeCount = $this->typeCount($year);
 
         $applicants = Applicant::with(['school', 'billing', 'payments' => $this->validPayments(), 'uniformEntitlement', 'uniformHandovers.type', 'uniformSizes.size'])
@@ -635,7 +655,13 @@ class ReportBuilder
             $columns[] = Report::col('Sudah diambil');
         }
 
-        return (new Report('Daftar Berhak Seragam, Belum Diambil', $this->sub($year, $incomplete ? 'Belum lengkap (termasuk sebagian)' : 'Belum mengambil sama sekali'), [count($rows).' murid.']))
+        $label = match (true) {
+            $incomplete => 'Belum lengkap (termasuk sebagian)',
+            in_array('belum', $selectedScopes, true) => 'Belum mengambil sama sekali',
+            default => null,
+        };
+
+        return (new Report('Daftar Berhak Seragam, Belum Diambil', $this->sub($year, $label), [count($rows).' murid.']))
             ->section(null, $columns, $rows);
     }
 
@@ -678,7 +704,11 @@ class ReportBuilder
 
     private function seragamUkuran(AcademicYear $year, array $f): Report
     {
-        $onlyNotPicked = $f['scope'] === 'belum_diambil';
+        $selectedScopes = array_values(array_intersect((array) $f['scope'], ['semua', 'belum_diambil']));
+        if (! $selectedScopes && is_string($f['scope']) && in_array($f['scope'], ['semua', 'belum_diambil'], true)) {
+            $selectedScopes = [$f['scope']];
+        }
+        $onlyNotPicked = in_array('belum_diambil', $selectedScopes, true) && ! in_array('semua', $selectedScopes, true);
         $report = new Report('Rekap Kebutuhan Ukuran Seragam', $this->sub($year, $onlyNotPicked ? 'Hanya yang belum diambil' : 'Semua murid berhak'), [
             'Dihitung dari murid berhak yang tidak mengundurkan diri.',
         ]);

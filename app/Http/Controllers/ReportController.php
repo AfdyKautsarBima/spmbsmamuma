@@ -73,9 +73,9 @@ class ReportController extends Controller
         $filters = [
             'from'      => DateInput::iso($request->query('from')),
             'to'        => DateInput::iso($request->query('to')),
-            'school_id' => $request->integer('school_id') ?: null,
-            'status'    => $request->query('status') ?: null,
-            'scope'     => $request->query('scope') ?: null,
+            'school_id' => $this->queryValues($request->query('school_id'), true),
+            'status'    => $this->queryValues($request->query('status')),
+            'scope'     => $this->queryValues($request->query('scope')),
             'referrer'  => $request->integer('referrer') ?: null,
             'kategori'  => $request->query('kategori') ?: null,
         ];
@@ -110,7 +110,28 @@ class ReportController extends Controller
         ]);
     }
 
-    /** @return list<array{name: string, label: string, type: string, options?: array<string,string>}> */
+    private function queryValues(mixed $value, bool $integers = false): array|string|null
+    {
+        if (! is_array($value)) {
+            if (! is_scalar($value) || (string) $value === '') {
+                return null;
+            }
+
+            return $integers
+                ? (ctype_digit((string) $value) && (int) $value > 0 ? (string) (int) $value : null)
+                : (string) $value;
+        }
+
+        $values = array_map('strval', array_filter($value, fn ($item) => is_scalar($item) && (string) $item !== ''));
+        if ($integers) {
+            $values = array_filter($values, fn ($item) => ctype_digit($item) && (int) $item > 0);
+            $values = array_map(fn ($item) => (string) (int) $item, $values);
+        }
+
+        return array_values(array_unique($values)) ?: null;
+    }
+
+    /** @return list<array{name: string, label: string, type: string, options?: array<string,string>, hint?: string, default?: string}> */
     private function filterDefinitions(string $key): array
     {
         $from = ['name' => 'from', 'label' => 'Dari tanggal', 'type' => 'date'];
@@ -118,21 +139,25 @@ class ReportController extends Controller
 
         return match ($key) {
             'pendaftar' => [$from, $to, [
-                'name' => 'school_id', 'label' => 'Asal sekolah', 'type' => 'select',
-                'options' => ['' => 'Semua sekolah'] + School::orderBy('name')->pluck('name', 'id')->all(),
+                'name' => 'school_id', 'label' => 'Asal sekolah', 'type' => 'multi-select',
+                'hint' => 'Pilih satu atau beberapa sekolah. Jika tidak ada yang dipilih, semua sekolah ditampilkan.',
+                'options' => School::orderBy('name')->pluck('name', 'id')->all(),
             ]],
             'daftar-ulang' => [[
-                'name' => 'status', 'label' => 'Status', 'type' => 'select',
-                'options' => ['' => 'Semua', 'sudah' => 'Sudah daftar ulang (menyicil dan lunas)', 'belum' => 'Belum daftar ulang',
+                'name' => 'status', 'label' => 'Status', 'type' => 'multi-select',
+                'hint' => 'Pilih satu atau beberapa status. Jika tidak ada yang dipilih, semua status ditampilkan.',
+                'options' => ['sudah' => 'Sudah daftar ulang (menyicil dan lunas)', 'belum' => 'Belum daftar ulang',
                     'menyicil' => 'Menyicil', 'lunas' => 'Lunas', 'mundur' => 'Mengundurkan diri'],
             ]],
             'pembayaran-harian', 'seragam-penyerahan' => [$from, $to],
             'seragam-belum-ambil' => [[
-                'name' => 'scope', 'label' => 'Cakupan', 'type' => 'select',
+                'name' => 'scope', 'label' => 'Cakupan', 'type' => 'multi-select', 'default' => 'belum',
+                'hint' => 'Pilih satu atau beberapa cakupan. Jika memilih keduanya, ditampilkan semua yang belum lengkap.',
                 'options' => ['belum' => 'Belum mengambil sama sekali', 'belum_lengkap' => 'Belum lengkap (termasuk sebagian)'],
             ]],
             'seragam-ukuran' => [[
-                'name' => 'scope', 'label' => 'Cakupan', 'type' => 'select',
+                'name' => 'scope', 'label' => 'Cakupan', 'type' => 'multi-select', 'default' => 'semua',
+                'hint' => 'Pilih satu atau beberapa cakupan. Memilih “Semua murid berhak” menampilkan semua.',
                 'options' => ['semua' => 'Semua murid berhak', 'belum_diambil' => 'Hanya yang belum diambil'],
             ]],
             default => [],
