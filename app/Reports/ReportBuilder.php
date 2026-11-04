@@ -42,6 +42,7 @@ class ReportBuilder
             'pendaftar'          => $this->pendaftar($year, $f),
             'berkas-kurang'      => $this->berkasKurang($year),
             'siswa-yatim'        => $this->siswaYatim($year),
+            'siswa-berprestasi'  => $this->siswaBerprestasi($year),
             'daftar-ulang'       => $this->daftarUlang($year, $f),
             'pembayaran-harian'  => $this->pembayaranHarian($year, $f),
             'tunggakan'          => $this->tunggakan($year),
@@ -162,6 +163,47 @@ class ReportBuilder
             ->section(null, array_map(fn ($label) => Report::col($label), [
                 'No', 'Nomor pendaftaran', 'Nama siswa', 'Asal sekolah', 'Status KTP ayah', 'Status KTP ibu', 'Yatim dari',
             ]), $rows);
+    }
+
+    private function siswaBerprestasi(AcademicYear $year): Report
+    {
+        $achievementTypes = [DocumentType::SuratPeringkat->value, DocumentType::Sertifikat->value];
+        $applicants = Applicant::with(['school', 'documents' => fn ($q) => $q->whereIn('type', $achievementTypes)])
+            ->where('academic_year_id', $year->id)
+            ->whereHas('documents', fn ($q) => $q
+                ->whereIn('type', $achievementTypes)
+                ->where('status', DocumentStatus::Diterima->value))
+            ->orderBy('registration_seq')
+            ->get();
+
+        $rows = [];
+        foreach ($applicants as $i => $applicant) {
+            $documents = $applicant->documents->keyBy(fn ($document) => $document->type->value);
+            $ranking = $documents->get(DocumentType::SuratPeringkat->value);
+            $certificate = $documents->get(DocumentType::Sertifikat->value);
+            $rankingStatus = $ranking?->status ?? DocumentStatus::Belum;
+            $certificateStatus = $certificate?->status ?? DocumentStatus::Belum;
+            $rankingDetail = $rankingStatus === DocumentStatus::Diterima && $ranking?->rank_position
+                ? ucfirst($ranking->ranking_type).' - peringkat '.$ranking->rank_position
+                : '-';
+
+            $rows[] = [
+                $i + 1,
+                $applicant->registration_number,
+                $applicant->name,
+                $applicant->school->name,
+                $rankingStatus->label(),
+                $rankingDetail,
+                $certificateStatus->label(),
+            ];
+        }
+
+        return (new Report('Rekap Siswa Berprestasi', $this->sub($year), [
+            count($rows).' siswa dengan surat keterangan peringkat atau sertifikat kejuaraan berstatus Diterima.',
+        ]))->section(null, array_map(fn ($label) => Report::col($label), [
+            'No', 'Nomor pendaftaran', 'Nama siswa', 'Asal sekolah',
+            'Status surat peringkat', 'Detail peringkat', 'Status sertifikat kejuaraan',
+        ]), $rows);
     }
 
     // ------------------------------------------------------------------ daftar ulang dan keuangan

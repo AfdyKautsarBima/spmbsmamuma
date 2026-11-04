@@ -151,14 +151,14 @@ class ReportTest extends TestCase
     public function test_index_lists_only_reports_allowed_for_the_role(): void
     {
         $this->actingAs($this->admin)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Reward Pembawa')->assertSee('Daftar Pendaftar')->assertSee('Rekap Siswa Yatim')->assertSee('Rekap Pembayaran Harian')->assertSee('Rekap Penyerahan Seragam')
+            ->assertSee('Rekap Reward Pembawa')->assertSee('Daftar Pendaftar')->assertSee('Rekap Siswa Yatim')->assertSee('Rekap Siswa Berprestasi')->assertSee('Rekap Pembayaran Harian')->assertSee('Rekap Penyerahan Seragam')
             ->assertDontSee('Rincian Pembawa');
         $this->actingAs($this->reg)->get('/laporan')->assertOk()
-            ->assertSee('Daftar Pendaftar')->assertSee('Daftar Berkas Kurang')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Reward Pembawa')->assertDontSee('Rekap Pembayaran Harian');
+            ->assertSee('Daftar Pendaftar')->assertSee('Daftar Berkas Kurang')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi')->assertDontSee('Rekap Reward Pembawa')->assertDontSee('Rekap Pembayaran Harian');
         $this->actingAs($this->clerk)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Pembayaran Harian')->assertSee('Daftar Tunggakan')->assertDontSee('Daftar Pendaftar')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Reward Pembawa');
+            ->assertSee('Rekap Pembayaran Harian')->assertSee('Daftar Tunggakan')->assertDontSee('Daftar Pendaftar')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi')->assertDontSee('Rekap Reward Pembawa');
         $this->actingAs($this->staff)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Kebutuhan Ukuran Seragam')->assertDontSee('Daftar Tunggakan')->assertDontSee('Rekap Pembayaran Harian')->assertDontSee('Rekap Siswa Yatim');
+            ->assertSee('Rekap Kebutuhan Ukuran Seragam')->assertDontSee('Daftar Tunggakan')->assertDontSee('Rekap Pembayaran Harian')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Siswa Berprestasi');
     }
 
     public function test_report_access_rules(): void
@@ -169,6 +169,7 @@ class ReportTest extends TestCase
             'tunggakan' => [$this->admin, $this->clerk], 'keuangan' => [$this->admin, $this->clerk], 'diskon' => [$this->admin, $this->clerk],
             'reward' => [$this->admin],
             'siswa-yatim' => [$this->admin],
+            'siswa-berprestasi' => [$this->admin],
             'seragam-belum-ambil' => [$this->admin, $this->staff], 'seragam-penyerahan' => [$this->admin, $this->staff],
             'seragam-ukuran' => [$this->admin, $this->staff], 'seragam-mundur' => [$this->admin, $this->staff],
         ];
@@ -184,6 +185,7 @@ class ReportTest extends TestCase
         $this->actingAs($this->admin)->get('/laporan/reward-rincian')->assertNotFound(); // tanpa pembawa
         $this->actingAs($this->reg)->get("/laporan/reward-rincian?referrer={$this->refX->id}")->assertForbidden();
         $this->actingAs($this->reg)->get('/laporan/siswa-yatim?format=xlsx')->assertForbidden();
+        $this->actingAs($this->reg)->get('/laporan/siswa-berprestasi?format=xlsx')->assertForbidden();
     }
 
     public function test_guest_is_redirected_to_login(): void
@@ -269,6 +271,43 @@ class ReportTest extends TestCase
             ->assertSee('Keduanya Tidak Ada')
             ->assertDontSee('Hanya Data KK')
             ->assertDontSee('Arsip');
+    }
+
+    public function test_achievement_report_includes_accepted_ranking_or_certificate_once(): void
+    {
+        $ranking = $this->applicant(1, ['name' => 'Juara Kelas']);
+        $certificate = $this->applicant(2, ['name' => 'Juara Kejuaraan', 'school_id' => $this->school2->id]);
+        $both = $this->applicant(3, ['name' => 'Juara Keduanya']);
+        $notAccepted = $this->applicant(4, ['name' => 'Belum Diterima']);
+        $noAchievement = $this->applicant(5, ['name' => 'Tanpa Prestasi']);
+
+        ApplicantDocument::create([
+            'applicant_id' => $ranking->id, 'type' => 'surat_peringkat', 'status' => DocumentStatus::Diterima,
+            'ranking_type' => 'kelas', 'rank_position' => 1,
+        ]);
+        ApplicantDocument::create(['applicant_id' => $certificate->id, 'type' => 'sertifikat', 'status' => DocumentStatus::Diterima]);
+        ApplicantDocument::create([
+            'applicant_id' => $both->id, 'type' => 'surat_peringkat', 'status' => DocumentStatus::Diterima,
+            'ranking_type' => 'paralel', 'rank_position' => 2,
+        ]);
+        ApplicantDocument::create(['applicant_id' => $both->id, 'type' => 'sertifikat', 'status' => DocumentStatus::Diterima]);
+        ApplicantDocument::create(['applicant_id' => $notAccepted->id, 'type' => 'sertifikat', 'status' => DocumentStatus::Belum]);
+        ApplicantDocument::create(['applicant_id' => $noAchievement->id, 'type' => 'surat_peringkat', 'status' => DocumentStatus::TidakAda]);
+
+        $report = $this->build('siswa-berprestasi');
+        $rows = $this->rows($report);
+
+        $this->assertSame(['Juara Kelas', 'Juara Kejuaraan', 'Juara Keduanya'], $this->names($report, 2));
+        $this->assertSame('Kelas - peringkat 1', $rows[0][5]);
+        $this->assertSame('Diterima', $rows[1][6]);
+        $this->assertSame('Paralel - peringkat 2', $rows[2][5]);
+        $this->assertSame(3, count($rows));
+
+        $this->actingAs($this->admin)->get('/laporan/siswa-berprestasi')->assertOk()
+            ->assertSee('Rekap Siswa Berprestasi')
+            ->assertSee('Juara Kejuaraan')
+            ->assertDontSee('Belum Diterima')
+            ->assertDontSee('Tanpa Prestasi');
     }
 
     // ---------- daftar ulang dan keuangan ----------

@@ -24,6 +24,7 @@ class ReportController extends Controller
         'pendaftar'           => ['Daftar Pendaftar', 'Pendaftaran', 'Semua pendaftar tahun ajaran, bisa disaring per tanggal input dan asal sekolah.', self::REG],
         'berkas-kurang'       => ['Daftar Berkas Kurang', 'Pendaftaran', 'Pendaftar yang berkasnya belum lengkap beserta berkas yang kurang, untuk dihubungi.', self::REG],
         'siswa-yatim'         => ['Rekap Siswa Yatim', 'Pendaftaran', 'Siswa dengan status KTP ayah atau ibu Tidak ada/almarhum.', self::ADMIN],
+        'siswa-berprestasi'   => ['Rekap Siswa Berprestasi', 'Pendaftaran', 'Siswa dengan surat keterangan peringkat atau sertifikat kejuaraan berstatus Diterima.', self::ADMIN],
         'daftar-ulang'        => ['Daftar Daftar Ulang', 'Daftar ulang dan keuangan', 'Status daftar ulang setiap murid: sudah, belum, menyicil, lunas, atau mundur.', self::CASH],
         'pembayaran-harian'   => ['Rekap Pembayaran Harian', 'Daftar ulang dan keuangan', 'Uang masuk per hari dan per panitia penerima, untuk mencocokkan kas.', self::CASH],
         'tunggakan'           => ['Daftar Tunggakan', 'Daftar ulang dan keuangan', 'Murid yang masih menyicil beserta sisa tagihannya.', self::CASH],
