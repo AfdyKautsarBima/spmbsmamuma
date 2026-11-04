@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 
 class DocumentRequest extends FormRequest
 {
-    private const DIGIT_FIELDS = ['number', 'student_nik', 'father_nik', 'mother_nik', 'guardian_nik'];
+    private const DIGIT_FIELDS = ['number', 'student_nik', 'father_nik', 'mother_nik', 'guardian_nik', 'card_number'];
 
     public function authorize(): bool
     {
@@ -23,10 +23,16 @@ class DocumentRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $family = (array) $this->input('family', []);
+        $documents = (array) $this->input('docs', []);
 
         foreach (self::DIGIT_FIELDS as $key) {
             if (isset($family[$key])) {
                 $family[$key] = preg_replace('/\D/', '', (string) $family[$key]);
+            }
+        }
+        foreach (['kks', 'pkh'] as $type) {
+            if (isset($documents[$type]['card_number'])) {
+                $documents[$type]['card_number'] = preg_replace('/\D/', '', (string) $documents[$type]['card_number']);
             }
         }
         foreach (['father_name', 'mother_name', 'guardian_name', 'guardian_relation'] as $key) {
@@ -40,6 +46,7 @@ class DocumentRequest extends FormRequest
 
         $this->merge([
             'family' => $family,
+            'docs'   => $documents,
             'nisn'   => preg_replace('/\D/', '', (string) $this->input('nisn')),
         ]);
     }
@@ -55,6 +62,14 @@ class DocumentRequest extends FormRequest
             $rules["docs.{$type->value}.status"] = ['required', Rule::in($allowed)];
         }
         $rules['docs.sertifikat.note'] = ['nullable', 'string', 'max:150'];
+
+        foreach (['kks', 'pkh'] as $type) {
+            $rules["docs.{$type}.card_number"] = [
+                Rule::requiredIf($this->input("docs.{$type}.status") === 'diterima'),
+                'nullable',
+                'digits_between:1,50',
+            ];
+        }
 
         if ($this->input('docs.kk.status') === 'diterima') {
             $rules = array_merge($rules, $this->familyRules($applicant));
@@ -146,6 +161,8 @@ class DocumentRequest extends FormRequest
         $attributes = [
             'docs.sertifikat.note'           => 'keterangan sertifikat',
             'nisn'                           => 'NISN',
+            'docs.kks.card_number'           => 'nomor kartu KKS/PKH',
+            'docs.pkh.card_number'           => 'nomor kartu KIP',
             'family.number'                  => 'nomor KK',
             'family.student_nik'             => 'NIK murid',
             'family.father_name'             => 'nama ayah',
@@ -177,6 +194,7 @@ class DocumentRequest extends FormRequest
             'family.mother_birth_year.between' => 'Tahun lahir ibu tidak wajar (minimal 1920 dan sedikitnya 12 tahun lebih tua dari murid).',
             'family.guardian_phone.regex'      => 'Nomor HP wali hanya berisi angka, diawali 08, panjang 10 sampai 13 digit.',
             'digits'                           => ':attribute harus :digits digit angka.',
+            'digits_between'                   => ':attribute harus berupa angka dengan panjang :min sampai :max digit.',
         ];
     }
 }

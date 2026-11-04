@@ -117,17 +117,29 @@ class DocumentController extends Controller
             $isCertificate = $type === DocumentType::Sertifikat;
             $oldNote = $row?->note;
             $newNote = $isCertificate ? (trim((string) ($v['docs']['sertifikat']['note'] ?? '')) ?: null) : null;
+            $isCard = in_array($type, [DocumentType::Kks, DocumentType::Pkh], true);
+            $oldCardNumber = $row?->card_number;
+            $newCardNumber = $isCard && $newStatus === DocumentStatus::Diterima
+                ? (trim((string) ($v['docs'][$type->value]['card_number'] ?? '')) ?: null)
+                : null;
 
             $statusChanged = $oldStatus !== $newStatus;
             $noteChanged = $isCertificate && $oldNote !== $newNote;
+            $cardNumberChanged = $isCard && $oldCardNumber !== $newCardNumber;
 
-            if (! $statusChanged && ! $noteChanged) {
+            if (! $statusChanged && ! $noteChanged && ! $cardNumberChanged) {
                 continue;
             }
 
             ApplicantDocument::updateOrCreate(
                 ['applicant_id' => $applicant->id, 'type' => $type->value],
-                ['status' => $newStatus, 'note' => $newNote, 'handled_at' => now(), 'handled_by' => $userId],
+                [
+                    'status' => $newStatus,
+                    'note' => $newNote,
+                    'card_number' => $newCardNumber,
+                    'handled_at' => now(),
+                    'handled_by' => $userId,
+                ],
             );
 
             if ($statusChanged) {
@@ -137,6 +149,10 @@ class DocumentController extends Controller
             if ($noteChanged) {
                 $old['Keterangan sertifikat'] = $oldNote;
                 $new['Keterangan sertifikat'] = $newNote;
+            }
+            if ($cardNumberChanged) {
+                $old['Nomor '.$type->label()] = $oldCardNumber;
+                $new['Nomor '.$type->label()] = $newCardNumber;
             }
         }
 

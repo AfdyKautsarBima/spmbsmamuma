@@ -37,8 +37,8 @@ enum DocumentType: string
             self::KtpIbu        => 'KTP ibu',
             self::KtpWali       => 'KTP wali',
             self::Sktm          => 'SKTM',
-            self::Kks           => 'Kartu KKS',
-            self::Pkh           => 'Kartu PKH',
+            self::Kks           => 'Kartu KKS/PKH',
+            self::Pkh           => 'Kartu KIP',
             self::Sertifikat    => 'Sertifikat kejuaraan',
         };
     }

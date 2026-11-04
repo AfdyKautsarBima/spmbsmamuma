@@ -48,6 +48,14 @@
                                     <input name="docs[sertifikat][note]" value="{{ old('docs.sertifikat.note', $row?->note) }}"
                                            placeholder="Keterangan, misal: Juara 2 OSN Kabupaten" maxlength="150" class="{{ $input }} mt-1">
                                 @endif
+                                @if (in_array($type, [\App\Enums\DocumentType::Kks, \App\Enums\DocumentType::Pkh], true))
+                                    <div id="card-number-{{ $type->value }}" class="mt-2" hidden>
+                                        <label for="card-number-input-{{ $type->value }}" class="mb-1 block text-xs text-slate-500">Nomor {{ $type->label() }}</label>
+                                        <input id="card-number-input-{{ $type->value }}" name="docs[{{ $type->value }}][card_number]"
+                                               inputmode="numeric" maxlength="50" value="{{ old("docs.{$type->value}.card_number", $row?->card_number) }}"
+                                               placeholder="Masukkan nomor kartu" class="{{ $input }}">
+                                    </div>
+                                @endif
                             </div>
                             <select id="doc-{{ $type->value }}" name="docs[{{ $type->value }}][status]" class="{{ $input }}">
                                 @foreach ($type->allowedStatuses() as $status)
@@ -167,6 +175,8 @@
             var form = document.getElementById('docs-form');
             var kkStatus = form.querySelector('[name="docs[kk][status]"]');
             var sklStatus = form.querySelector('[name="docs[skl][status]"]');
+            var kksStatus = form.querySelector('[name="docs[kks][status]"]');
+            var kipStatus = form.querySelector('[name="docs[pkh][status]"]');
             var fatherAbsent = form.querySelector('[name="family[father_absent]"]');
             var motherAbsent = form.querySelector('[name="family[mother_absent]"]');
 
@@ -180,6 +190,8 @@
                 var kk = kkStatus.value === 'diterima';
                 toggle(document.getElementById('kk-section'), kk);
                 toggle(document.getElementById('nisn-section'), sklStatus.value === 'diterima');
+                toggle(document.getElementById('card-number-kks'), kksStatus.value === 'diterima');
+                toggle(document.getElementById('card-number-pkh'), kipStatus.value === 'diterima');
 
                 if (kk) {
                     toggle(document.getElementById('father-fields'), !fatherAbsent.checked);
@@ -193,7 +205,7 @@
                 }
             }
 
-            [kkStatus, sklStatus, fatherAbsent, motherAbsent].forEach(function (el) {
+            [kkStatus, sklStatus, kksStatus, kipStatus, fatherAbsent, motherAbsent].forEach(function (el) {
                 el.addEventListener('change', refresh);
             });
             refresh();

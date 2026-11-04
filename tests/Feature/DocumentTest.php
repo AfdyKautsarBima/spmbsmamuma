@@ -132,7 +132,7 @@ class DocumentTest extends TestCase
 
         // kondisional tidak boleh Belum
         $missing = $c->missing($this->map(['kks' => S::Belum] + $base));
-        $this->assertSame(['Kartu KKS (belum diputuskan)'], $missing);
+        $this->assertSame(['Kartu KKS/PKH (belum diputuskan)'], $missing);
 
         // wajib kurang
         $this->assertSame(['FC SKL'], $c->missing($this->map(['skl' => S::Belum] + $base)));
@@ -197,6 +197,34 @@ class DocumentTest extends TestCase
         $this->submit($a, $this->docs(['foto' => 'tidak_ada']))->assertSessionHasErrors('docs.foto.status');
         $this->submit($a, $this->docs(['kks' => 'tidak_ada', 'ktp_ayah' => 'tidak_ada']))->assertSessionHasNoErrors();
         $this->submit($a, $this->docs(['kks' => 'ngawur']))->assertSessionHasErrors('docs.kks.status');
+    }
+
+    public function test_accepted_kks_pkh_and_kip_require_and_save_card_numbers(): void
+    {
+        $a = $this->makeApplicant();
+
+        $this->submit($a, $this->docs(['kks' => 'diterima', 'pkh' => 'diterima']))
+            ->assertSessionHasErrors(['docs.kks.card_number', 'docs.pkh.card_number']);
+
+        $this->submit($a, $this->docs([
+            'kks' => ['status' => 'diterima', 'card_number' => '1234 5678'],
+            'pkh' => ['status' => 'diterima', 'card_number' => '9876 5432'],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('12345678', ApplicantDocument::where('applicant_id', $a->id)->where('type', 'kks')->value('card_number'));
+        $this->assertSame('98765432', ApplicantDocument::where('applicant_id', $a->id)->where('type', 'pkh')->value('card_number'));
+
+        $this->actingAs($this->user)->get(route('applicants.show', $a))
+            ->assertOk()
+            ->assertSee('Kartu KKS/PKH')
+            ->assertSee('Kartu KIP')
+            ->assertSee('12345678')
+            ->assertSee('98765432');
+
+        $this->submit($a, $this->docs(['kks' => 'tidak_ada', 'pkh' => 'tidak_ada']))
+            ->assertSessionHasNoErrors();
+        $this->assertNull(ApplicantDocument::where('applicant_id', $a->id)->where('type', 'kks')->value('card_number'));
+        $this->assertNull(ApplicantDocument::where('applicant_id', $a->id)->where('type', 'pkh')->value('card_number'));
     }
 
     // ---------- data KK ----------

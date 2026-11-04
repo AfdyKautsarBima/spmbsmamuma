@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApplicantDocument extends Model
 {
-    protected $fillable = ['applicant_id', 'type', 'status', 'note', 'handled_at', 'handled_by'];
+    protected $fillable = ['applicant_id', 'type', 'status', 'note', 'card_number', 'handled_at', 'handled_by'];
 
     protected function casts(): array
     {

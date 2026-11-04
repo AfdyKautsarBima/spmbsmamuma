@@ -21,7 +21,15 @@
         @foreach (\App\Enums\DocumentType::cases() as $type)
             @php($status = $statusMap[$type->value])
             <div class="flex justify-between border-b border-slate-100 py-1">
-                <span>{{ $type->label() }}</span>
+                <span>
+                    {{ $type->label() }}
+                    @if (in_array($type, [\App\Enums\DocumentType::Kks, \App\Enums\DocumentType::Pkh], true))
+                        @php($card = $applicant->documents->first(fn ($d) => $d->type === $type))
+                        @if ($status === \App\Enums\DocumentStatus::Diterima && $card?->card_number)
+                            <span class="text-slate-500">({{ $card->card_number }})</span>
+                        @endif
+                    @endif
+                </span>
                 <span class="{{ $status === \App\Enums\DocumentStatus::Diterima ? 'text-green-700' : ($status === \App\Enums\DocumentStatus::TidakAda ? 'text-slate-500' : 'text-amber-700') }}">{{ $status->label() }}</span>
             </div>
         @endforeach
