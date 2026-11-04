@@ -557,7 +557,8 @@ class EnrollmentTest extends TestCase
         $this->actingAs($this->admin)->get('/dashboard')->assertOk()->assertSee('Tagihan bersih')->assertSee('Total diterima')
             ->assertSee('Status pendaftar')->assertSee('Jumlah pendaftar per asal sekolah')
             ->assertSee('Pendaftar')->assertSee('Daftar ulang')->assertSee('Cabut')
-            ->assertSee('Diagram status pendaftar', false);
+            ->assertSee('Diagram status pendaftar', false)
+            ->assertDontSee('Akun aktif per peran');
         $this->actingAs($this->reg)->get('/dashboard')->assertOk()->assertDontSee('Uang masuk hari ini')
             ->assertDontSee('Jumlah pendaftar per asal sekolah');
     }
@@ -578,7 +579,16 @@ class EnrollmentTest extends TestCase
         $response = $this->actingAs($this->admin)->get('/dashboard');
         $response->assertOk()
             ->assertSee('SMP 1')->assertSee('SMP 2')
+            ->assertDontSee('Akun aktif per peran')
             ->assertSee('aria-label="Diagram status pendaftar, total 4"', false);
+        $this->assertGreaterThan(
+            strpos($response->getContent(), 'Buka menu seragam'),
+            strpos($response->getContent(), 'aria-label="Diagram status pendaftar, total 4"'),
+        );
+        $this->assertGreaterThan(
+            strpos($response->getContent(), 'aria-label="Diagram status pendaftar, total 4"'),
+            strpos($response->getContent(), 'Jumlah pendaftar per asal sekolah'),
+        );
         $this->assertSame([
             ['label' => 'Pendaftar', 'count' => 1, 'color' => '#64748b'],
             ['label' => 'Daftar ulang', 'count' => 2, 'color' => '#16a34a'],

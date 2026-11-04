@@ -6,7 +6,6 @@ use App\Enums\Role;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\School;
-use App\Models\User;
 use App\Services\ApplicantChecks;
 use App\Services\EnrollmentStats;
 use App\Services\UniformStats;
@@ -20,10 +19,6 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $year = AcademicYear::active();
-
-        $roleCounts = $user->isAdmin()
-            ? User::where('is_active', true)->selectRaw('role, count(*) as total')->groupBy('role')->pluck('total', 'role')
-            : collect();
 
         $stats = null;
         if ($year && in_array($user->role, [Role::Admin, Role::Pendaftaran], true)) {
@@ -72,7 +67,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', [
-            'year' => $year, 'roleCounts' => $roleCounts, 'stats' => $stats, 'enrollment' => $enrollment,
+            'year' => $year, 'stats' => $stats, 'enrollment' => $enrollment,
             'uniform' => $uniform, 'charts' => $charts,
         ]);
     }

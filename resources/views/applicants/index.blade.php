@@ -73,10 +73,10 @@
                         </td>
                         <td class="whitespace-nowrap px-4 py-3">{{ $a->created_at->format('d/m/Y H:i') }}</td>
                         <td class="flex justify-end gap-2 px-4 py-3">
-                            <a href="{{ route('applicants.show', $a) }}" class="rounded border px-3 py-1 text-slate-800 hover:bg-slate-50">Lihat</a>
+                            <a href="{{ route('applicants.show', $a) }}" class="rounded bg-slate-800 px-3 py-1 text-white hover:bg-slate-700">Lihat</a>
                             @if (! $a->trashed() && ! $readOnly)
-                                <a href="{{ route('applicants.edit', $a) }}" class="rounded border px-3 py-1 text-slate-800 hover:bg-slate-50">Ubah</a>
-                                <a href="{{ route('documents.edit', $a) }}" class="rounded border px-3 py-1 text-slate-800 hover:bg-slate-50">Berkas</a>
+                                <a href="{{ route('applicants.edit', $a) }}" class="rounded bg-slate-800 px-3 py-1 text-white hover:bg-slate-700">Ubah</a>
+                                <a href="{{ route('documents.edit', $a) }}" class="rounded bg-slate-800 px-3 py-1 text-white hover:bg-slate-700">Berkas</a>
                             @endif
                         </td>
                     </tr>
