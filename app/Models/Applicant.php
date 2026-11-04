@@ -18,7 +18,7 @@ class Applicant extends Model
         'name', 'gender', 'birth_place', 'birth_date',
         'province_code', 'province_name', 'regency_code', 'regency_name',
         'district_code', 'district_name', 'village_code', 'village_name', 'rt', 'rw',
-        'father_name', 'mother_name', 'phone',
+        'father_name', 'mother_name', 'phone', 'student_phone',
         'school_id', 'referrer_name', 'referrer_class_name', 'person_key', 'created_by',
         'nisn', 'documents_complete',
         'withdrawn_at', 'withdrawn_reason', 'withdrawn_by', 'refund_note',

@@ -205,14 +205,50 @@ class ApplicantTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
+    public function test_student_phone_is_optional_separate_and_validated(): void
+    {
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'student_phone' => '0812-3456-7891',
+        ]))->assertSessionHasNoErrors();
+
+        $applicant = Applicant::firstOrFail();
+        $this->assertSame('081234567891', $applicant->student_phone);
+        $this->assertSame('081234567890', $applicant->phone);
+
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-002',
+            'name' => 'Tanpa HP Siswa',
+            'student_phone' => null,
+        ]))->assertSessionHasNoErrors();
+        $this->assertNull(Applicant::where('registration_number', 'A-002')->firstOrFail()->student_phone);
+
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-003',
+            'name' => 'HP Siswa Tidak Valid',
+            'student_phone' => '0712345678',
+        ]))->assertSessionHasErrors('student_phone');
+    }
+
     public function test_whatsapp_contact_is_only_shown_for_applicants_who_have_not_re_enrolled(): void
     {
-        $applicant = $this->makeApplicant(1, ['phone' => '081234567890']);
+        $applicant = $this->makeApplicant(1, [
+            'phone' => '081234567890',
+            'student_phone' => '081234567891',
+        ]);
 
         $this->actingAs($this->user)->get(route('applicants.show', $applicant))
             ->assertOk()
             ->assertSee('Hubungi via WhatsApp')
-            ->assertSee('https://wa.me/6281234567890');
+            ->assertSee('https://wa.me/6281234567890')
+            ->assertSee('Nomor HP siswa')
+            ->assertSee('081234567891')
+            ->assertSee('Nomor HP orang tua/wali');
+
+        $this->actingAs($this->user)->get(route('applicants.print', $applicant))
+            ->assertOk()
+            ->assertSee('Nomor HP siswa')
+            ->assertSee('081234567891')
+            ->assertSee('Nomor HP orang tua/wali');
 
         Payment::create([
             'applicant_id' => $applicant->id,
@@ -421,6 +457,32 @@ class ApplicantTest extends TestCase
         $this->assertFalse(Schema::hasColumn('applicants', 'referrer_id'));
         $this->assertFalse(Schema::hasTable('referrers'));
         $this->actingAs(User::factory()->admin()->create())->get('/referrers')->assertNotFound();
+    }
+
+    public function test_referrer_class_can_be_selected_or_entered_as_other(): void
+    {
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'referrer_class_option' => 'X.1',
+            'referrer_class_other' => '',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame('X.1', Applicant::firstOrFail()->referrer_class_name);
+
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-002',
+            'name' => 'Murid Kedua',
+            'mother_name' => 'Ibu Kedua',
+            'referrer_class_option' => 'lainnya',
+            'referrer_class_other' => ' XI   IPA 1 ',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame('XI IPA 1', Applicant::where('registration_number', 'A-002')->firstOrFail()->referrer_class_name);
+
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-003',
+            'name' => 'Murid Ketiga',
+            'mother_name' => 'Ibu Ketiga',
+            'referrer_class_option' => 'lainnya',
+            'referrer_class_other' => '',
+        ]))->assertSessionHasErrors('referrer_class_other');
     }
 
     public function test_existing_referrer_values_are_copied_to_applicants_by_the_migration(): void

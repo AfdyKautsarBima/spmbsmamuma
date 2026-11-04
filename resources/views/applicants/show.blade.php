@@ -32,6 +32,7 @@
                     'Nama murid' => $applicant->name,
                     'Jenis kelamin' => $applicant->gender === 'L' ? 'Laki-laki' : 'Perempuan',
                     'Tempat, tanggal lahir' => $applicant->birth_place.', '.$applicant->birth_date->format('d/m/Y'),
+                    'Nomor HP siswa' => $applicant->student_phone ?? '-',
                     'Alamat' => $applicant->fullAddress(),
                 ] as $label => $value)
                     <div><dt class="text-slate-500">{{ $label }}</dt><dd class="font-medium">{{ $value }}</dd></div>
@@ -44,7 +45,7 @@
                 @foreach ([
                     'Nama ayah' => $applicant->father_name,
                     'Nama ibu' => $applicant->mother_name,
-                    'Nomor HP' => $applicant->phone ?? '-',
+                    'Nomor HP orang tua/wali' => $applicant->phone ?? '-',
                     'Asal sekolah' => $applicant->school->name.' ('.$applicant->school->regency_name.')',
                     'Nama pembawa' => $applicant->referrer_name ?? '-',
                     'Kelas pembawa' => $applicant->referrer_class_name ?? '-',

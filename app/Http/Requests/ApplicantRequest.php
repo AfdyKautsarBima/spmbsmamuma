@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\Region;
 use App\Support\DateInput;
+use App\Support\ReferrerClass;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -31,6 +32,7 @@ class ApplicantRequest extends FormRequest
         }
 
         $phone = preg_replace('/[\s\-.]/', '', (string) $this->input('phone'));
+        $studentPhone = preg_replace('/[\s\-.]/', '', (string) $this->input('student_phone'));
 
         $this->merge([
             'registration_number' => $number,
@@ -40,6 +42,7 @@ class ApplicantRequest extends FormRequest
             'father_name'         => $collapse($this->input('father_name')),
             'mother_name'         => $collapse($this->input('mother_name')),
             'phone'               => $phone === '' ? null : $phone,
+            'student_phone'       => $studentPhone === '' ? null : $studentPhone,
             'rt'                  => trim((string) $this->input('rt')),
             'rw'                  => trim((string) $this->input('rw')),
         ]);
@@ -90,6 +93,7 @@ class ApplicantRequest extends FormRequest
             'father_name'   => ['required', 'string', 'max:100'],
             'mother_name'   => ['required', 'string', 'max:100'],
             'phone'         => ['nullable', 'regex:/^08\d{8,11}$/'],
+            'student_phone' => ['nullable', 'regex:/^08\d{8,11}$/'],
             'school_id'     => ['required', Rule::exists('schools', 'id')->where(function ($q) use ($currentSchool) {
                 $q->where('is_active', true);
                 if ($currentSchool) {
@@ -98,12 +102,19 @@ class ApplicantRequest extends FormRequest
             })],
             'referrer_name' => ['nullable', 'required_with:referrer_class_name', 'string', 'max:100'],
             'referrer_class_name' => ['nullable', 'string', 'max:50'],
+            'referrer_class_option' => ['nullable', 'string', Rule::in([...ReferrerClass::OPTIONS, ReferrerClass::OTHER])],
+            'referrer_class_other' => ['nullable', 'string', 'max:50', 'required_if:referrer_class_option,'.ReferrerClass::OTHER],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
+            if (($this->filled('referrer_class_option') || $this->filled('referrer_class_name'))
+                && ! $this->filled('referrer_name')) {
+                $v->errors()->add('referrer_name', 'Nama pembawa wajib diisi jika kelas pembawa dipilih.');
+            }
+
             if ($v->errors()->hasAny(['province_code', 'regency_code', 'district_code', 'village_code'])) {
                 return;
             }
@@ -124,6 +135,7 @@ class ApplicantRequest extends FormRequest
             if (Region::whereIn('code', [$province, $regency, $district, $village])->count() !== 4) {
                 $v->errors()->add('village_code', 'Data wilayah belum lengkap. Hubungi admin.');
             }
+
         });
     }
 
@@ -144,9 +156,12 @@ class ApplicantRequest extends FormRequest
             'father_name'         => 'nama ayah',
             'mother_name'         => 'nama ibu',
             'phone'               => 'nomor HP',
+            'student_phone'       => 'nomor HP siswa',
             'school_id'           => 'asal sekolah',
             'referrer_name'       => 'nama pembawa',
             'referrer_class_name' => 'kelas pembawa',
+            'referrer_class_option' => 'kelas pembawa',
+            'referrer_class_other' => 'kelas pembawa lainnya',
         ];
     }
 
@@ -160,6 +175,7 @@ class ApplicantRequest extends FormRequest
             'birth_date.before_or_equal' => 'Tanggal lahir tidak boleh melewati hari ini.',
             'birth_date.after'           => 'Tanggal lahir tidak wajar.',
             'phone.regex'                => 'Nomor HP hanya berisi angka, diawali 08, panjang 10 sampai 13 digit.',
+            'student_phone.regex'       => 'Nomor HP siswa hanya berisi angka, diawali 08, panjang 10 sampai 13 digit.',
             'school_id.exists'           => 'Pilih asal sekolah dari daftar. Bila belum ada, minta admin menambahkannya.',
             'rt.regex'                   => 'RT berupa angka 1 sampai 3 digit.',
             'rw.regex'                   => 'RW berupa angka 1 sampai 3 digit.',
@@ -193,10 +209,24 @@ class ApplicantRequest extends FormRequest
             'father_name'         => $v['father_name'],
             'mother_name'         => $v['mother_name'],
             'phone'               => $v['phone'] ?? null,
+            'student_phone'       => $v['student_phone'] ?? null,
             'school_id'           => (int) $v['school_id'],
             'referrer_name'       => isset($v['referrer_name']) ? trim(preg_replace('/\s+/u', ' ', $v['referrer_name'])) ?: null : null,
-            'referrer_class_name' => isset($v['referrer_class_name']) ? trim(preg_replace('/\s+/u', ' ', $v['referrer_class_name'])) ?: null : null,
+            'referrer_class_name' => $this->referrerClassName($v),
             'person_key'          => Applicant::personKey($v['name'], $v['birth_date'], $v['mother_name']),
         ];
+    }
+
+    private function referrerClassName(array $validated): ?string
+    {
+        if (array_key_exists('referrer_class_option', $validated)) {
+            $className = $validated['referrer_class_option'] === ReferrerClass::OTHER
+                ? ($validated['referrer_class_other'] ?? null)
+                : ($validated['referrer_class_option'] ?? null);
+        } else {
+            $className = $validated['referrer_class_name'] ?? null;
+        }
+
+        return $className !== null ? (trim(preg_replace('/\s+/u', ' ', $className)) ?: null) : null;
     }
 }

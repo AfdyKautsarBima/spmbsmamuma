@@ -43,10 +43,11 @@
         <tr><td>Nama murid</td><td>: {{ $applicant->name }}</td></tr>
         <tr><td>Jenis kelamin</td><td>: {{ $applicant->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</td></tr>
         <tr><td>Tempat, tanggal lahir</td><td>: {{ $applicant->birth_place }}, {{ $applicant->birth_date->translatedFormat('d F Y') }}</td></tr>
+        <tr><td>Nomor HP siswa</td><td>: {{ $applicant->student_phone ?? '-' }}</td></tr>
         <tr><td>Alamat</td><td>: {{ $applicant->fullAddress() }}</td></tr>
         <tr><td>Nama ayah</td><td>: {{ $applicant->father_name }}</td></tr>
         <tr><td>Nama ibu</td><td>: {{ $applicant->mother_name }}</td></tr>
-        <tr><td>Nomor HP</td><td>: {{ $applicant->phone ?? '-' }}</td></tr>
+        <tr><td>Nomor HP orang tua/wali</td><td>: {{ $applicant->phone ?? '-' }}</td></tr>
         <tr><td>Asal sekolah</td><td>: {{ $applicant->school->name }}, {{ $applicant->school->regency_name }}</td></tr>
         <tr><td>Tanggal pendaftaran</td><td>: {{ $applicant->created_at->translatedFormat('d F Y') }}</td></tr>
     </table>

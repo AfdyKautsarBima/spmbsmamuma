@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\Applicant;
 use App\Models\School;
 use App\Reports\ReportBuilder;
 use App\Support\DateInput;
+use App\Support\ReferrerClass;
 use App\Support\XlsxWriter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -78,6 +80,7 @@ class ReportController extends Controller
             'scope'     => $this->queryValues($request->query('scope')),
             'referrer_name' => is_string($request->query('referrer_name')) ? trim($request->query('referrer_name')) : null,
             'referrer_class_name' => is_string($request->query('referrer_class_name')) ? trim($request->query('referrer_class_name')) : null,
+            'referrer_class_filter' => is_string($request->query('referrer_class_filter')) ? trim($request->query('referrer_class_filter')) : null,
             'kategori'  => $request->query('kategori') ?: null,
         ];
 
@@ -150,6 +153,7 @@ class ReportController extends Controller
                 'options' => ['sudah' => 'Sudah daftar ulang (menyicil dan lunas)', 'belum' => 'Belum daftar ulang',
                     'menyicil' => 'Menyicil', 'lunas' => 'Lunas', 'mundur' => 'Mengundurkan diri'],
             ]],
+            'reward' => [$this->rewardClassFilter()],
             'pembayaran-harian', 'seragam-penyerahan' => [$from, $to],
             'seragam-belum-ambil' => [[
                 'name' => 'scope', 'label' => 'Cakupan', 'type' => 'multi-select', 'default' => 'belum',
@@ -163,5 +167,33 @@ class ReportController extends Controller
             ]],
             default => [],
         };
+    }
+
+    private function rewardClassFilter(): array
+    {
+        $options = ['' => 'Semua kelas'];
+        foreach (ReferrerClass::OPTIONS as $className) {
+            $options[$className] = $className;
+        }
+
+        $otherClasses = Applicant::query()
+            ->whereNotNull('referrer_class_name')
+            ->whereNotIn('referrer_class_name', ReferrerClass::OPTIONS)
+            ->distinct()
+            ->orderBy('referrer_class_name')
+            ->pluck('referrer_class_name')
+            ->all();
+
+        foreach ($otherClasses as $className) {
+            $options[$className] = $className;
+        }
+        $options['__tanpa_kelas__'] = 'Tanpa kelas';
+
+        return [
+            'name' => 'referrer_class_filter',
+            'label' => 'Kelas pembawa',
+            'type' => 'select',
+            'options' => $options,
+        ];
     }
 }

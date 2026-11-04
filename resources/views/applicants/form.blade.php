@@ -2,6 +2,20 @@
 @section('title', $applicant->exists ? 'Ubah Pendaftar' : 'Input Pendaftar')
 
 @section('content')
+    @php
+        $referrerClassOptions = \App\Support\ReferrerClass::OPTIONS;
+        $storedReferrerClass = old('referrer_class_name', $applicant->referrer_class_name);
+        $selectedReferrerClass = old(
+            'referrer_class_option',
+            in_array($storedReferrerClass, $referrerClassOptions, true)
+                ? $storedReferrerClass
+                : ($storedReferrerClass ? \App\Support\ReferrerClass::OTHER : '')
+        );
+        $otherReferrerClass = old(
+            'referrer_class_other',
+            $selectedReferrerClass === \App\Support\ReferrerClass::OTHER ? $storedReferrerClass : ''
+        );
+    @endphp
     <h1 class="mb-4 text-xl font-semibold">
         {{ $applicant->exists ? 'Ubah Pendaftar '.$applicant->registration_number : 'Input Pendaftar' }}
         <span class="text-sm font-normal text-slate-500">TA {{ $year->name }}</span>
@@ -95,6 +109,13 @@
                     @error('birth_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
             </div>
+            <div class="sm:w-1/2">
+                <label for="student_phone" class="mb-1 block text-sm font-medium">Nomor HP siswa (opsional)</label>
+                <input id="student_phone" name="student_phone" inputmode="tel" maxlength="13"
+                       value="{{ old('student_phone', $applicant->student_phone) }}" placeholder="08xxxxxxxxxx"
+                       class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                @error('student_phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
         </section>
 
         <section class="space-y-4 rounded-lg bg-white p-5 shadow-sm">
@@ -134,7 +155,7 @@
                 </div>
             </div>
             <div class="sm:w-1/2">
-                <label for="phone" class="mb-1 block text-sm font-medium">Nomor HP (opsional)</label>
+                <label for="phone" class="mb-1 block text-sm font-medium">Nomor HP orang tua/wali (opsional, untuk WhatsApp)</label>
                 <input id="phone" name="phone" inputmode="tel" value="{{ old('phone', $applicant->phone) }}" placeholder="08xxxxxxxxxx"
                        class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
                 @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
@@ -169,14 +190,27 @@
                     <input id="referrer_name" name="referrer_name" maxlength="100"
                            value="{{ old('referrer_name', $applicant->referrer_name) }}" placeholder="Nama pembawa atau kode referral"
                            class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                    <label for="referrer_class_name" class="mb-1 mt-3 block text-sm font-medium">Kelas pembawa (opsional)</label>
-                    <input id="referrer_class_name" name="referrer_class_name" maxlength="50"
-                           value="{{ old('referrer_class_name', $applicant->referrer_class_name) }}" placeholder="Kelas pembawa"
-                           class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    <label for="referrer_class_option" class="mb-1 mt-3 block text-sm font-medium">Kelas pembawa (opsional)</label>
+                    <select id="referrer_class_option" name="referrer_class_option"
+                            class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                        <option value="">-- Pilih kelas --</option>
+                        @foreach ($referrerClassOptions as $className)
+                            <option value="{{ $className }}" @selected($selectedReferrerClass === $className)>{{ $className }}</option>
+                        @endforeach
+                        <option value="{{ \App\Support\ReferrerClass::OTHER }}" @selected($selectedReferrerClass === \App\Support\ReferrerClass::OTHER)>Lainnya</option>
+                    </select>
+                    <div id="referrer_class_other_wrap" class="mt-2 {{ $selectedReferrerClass === \App\Support\ReferrerClass::OTHER ? '' : 'hidden' }}">
+                        <label for="referrer_class_other" class="mb-1 block text-sm font-medium">Kelas lainnya</label>
+                        <input id="referrer_class_other" name="referrer_class_other" maxlength="50"
+                               value="{{ $otherReferrerClass }}" placeholder="Masukkan kelas pembawa"
+                               class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    </div>
                     <p class="mt-1 text-xs text-slate-500">Data pembawa dicatat langsung pada pendaftar ini.</p>
                 @endif
                 @error('referrer_name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 @error('referrer_class_name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                @error('referrer_class_option')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                @error('referrer_class_other')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
         </section>
 
@@ -191,6 +225,19 @@
 
     <script>
         (function () {
+            var classOption = document.getElementById('referrer_class_option');
+            var classOtherWrap = document.getElementById('referrer_class_other_wrap');
+            var classOther = document.getElementById('referrer_class_other');
+            if (classOption && classOtherWrap && classOther) {
+                var updateOtherClass = function () {
+                    var isOther = classOption.value === @json(\App\Support\ReferrerClass::OTHER);
+                    classOtherWrap.classList.toggle('hidden', !isOther);
+                    classOther.required = isOther;
+                };
+                classOption.addEventListener('change', updateOtherClass);
+                updateOtherClass();
+            }
+
             var filter = document.getElementById('school-filter');
             var select = document.getElementById('school_id');
             filter.addEventListener('input', function () {

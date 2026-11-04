@@ -215,13 +215,21 @@ class ReportTest extends TestCase
     public function test_applicant_list_report_and_filters(): void
     {
         $a = $this->applicant(1, ['name' => 'Murid A']);
-        $b = $this->applicant(2, ['name' => 'Murid B', 'school_id' => $this->school2->id, 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
+        $b = $this->applicant(2, [
+            'name' => 'Murid B',
+            'school_id' => $this->school2->id,
+            'student_phone' => '081234567899',
+            'referrer_name' => $this->refX,
+            'referrer_class_name' => 'XI A',
+        ]);
         \Illuminate\Support\Facades\DB::table('applicants')->where('id', $a->id)->update(['created_at' => '2026-12-04 09:00:00']);
 
         $all = $this->build('pendaftar');
         $this->assertSame(['Murid A', 'Murid B'], $this->names($all, 2));
-        $this->assertSame('Budi Santoso', $this->rows($all)[1][12]);
-        $this->assertSame('XI A', $this->rows($all)[1][13]);
+        $this->assertSame('081234567899', $this->rows($all)[1][9]);
+        $this->assertSame('081234567890', $this->rows($all)[1][10]);
+        $this->assertSame('Budi Santoso', $this->rows($all)[1][13]);
+        $this->assertSame('XI A', $this->rows($all)[1][14]);
         $this->assertSame('25/12/2010', $this->rows($all)[0][5]);
 
         $this->assertSame(['Murid B'], $this->names($this->build('pendaftar', ['school_id' => $this->school2->id]), 2));
@@ -248,7 +256,11 @@ class ReportTest extends TestCase
 
     public function test_document_check_report_includes_all_applicants_and_document_statuses(): void
     {
-        $complete = $this->applicant(1, ['name' => 'Berkas Lengkap', 'documents_complete' => true]);
+        $complete = $this->applicant(1, [
+            'name' => 'Berkas Lengkap',
+            'documents_complete' => true,
+            'student_phone' => '081234567899',
+        ]);
         $incomplete = $this->applicant(2, ['name' => 'Berkas Belum Lengkap', 'school_id' => $this->school2->id]);
         $occupation = Occupation::create(['name' => 'Wiraswasta', 'sort_order' => 1, 'is_active' => true]);
         ApplicantFamilyDetail::create([
@@ -303,6 +315,8 @@ class ReportTest extends TestCase
         $this->assertSame('Tidak ada', $rows[0][$column('Status: Sertifikat kejuaraan')]);
         $this->assertSame('Belum diterima', $rows[1][$column('Status: KTP ayah')]);
         $this->assertSame('3319014501100001', $rows[0][$column('NIK murid')]);
+        $this->assertSame('081234567899', $rows[0][$column('No. HP siswa')]);
+        $this->assertSame('081234567890', $rows[0][$column('No. HP orang tua/wali')]);
         $this->assertSame('Ayah 1', $rows[0][$column('Nama ayah')]);
         $this->assertSame('3319010101800001', $rows[0][$column('NIK ayah')]);
         $this->assertSame('Wiraswasta', $rows[0][$column('Pekerjaan ayah')]);
@@ -320,7 +334,7 @@ class ReportTest extends TestCase
         $this->assertSame('KKS-123', $rows[0][$column('Nomor KKS/PKH')]);
         $this->assertSame('Paralel', $rows[0][$column('Jenis peringkat')]);
         $this->assertSame(2, $rows[0][$column('Peringkat')]);
-        $this->assertSame(count(DocumentType::cases()) + 24, count($columns));
+        $this->assertSame(count(DocumentType::cases()) + 25, count($columns));
 
         $this->actingAs($this->reg)->get('/laporan/rekap-cek-berkas')->assertOk()
             ->assertSee('Berkas Lengkap')->assertSee('Berkas Belum Lengkap')
@@ -553,6 +567,20 @@ class ReportTest extends TestCase
             'kategori' => 'semua',
         ]);
         $this->assertSame(['Murid 1', 'Murid 2'], $this->names($detail, 2));
+    }
+
+    public function test_reward_class_filter_limits_the_report_and_keeps_custom_classes_available(): void
+    {
+        $this->applicant(1, ['referrer_name' => 'Budi Santoso', 'referrer_class_name' => 'XI.1']);
+        $this->applicant(2, ['referrer_name' => 'Siti Aminah', 'referrer_class_name' => 'Kelas Khusus']);
+
+        $this->actingAs($this->admin)->get('/laporan/reward')
+            ->assertOk()->assertSee('Kelas pembawa')->assertSee('Kelas Khusus')->assertSee('XII.6');
+
+        $report = $this->build('reward', ['referrer_class_filter' => 'Kelas Khusus']);
+        $this->assertCount(1, $this->rows($report));
+        $this->assertSame('Siti Aminah', $this->rows($report)[0][1]);
+        $this->assertSame('Kelas Khusus', $this->rows($report)[0][2]);
     }
 
     public function test_reward_detail_pages_and_links(): void

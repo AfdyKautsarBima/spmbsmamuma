@@ -16,7 +16,8 @@
 
     @if ($years->isNotEmpty() || $filterDefs)
         <form method="GET" class="mb-4 flex flex-wrap items-end gap-3">
-            @if (request('referrer'))<input type="hidden" name="referrer" value="{{ request('referrer') }}">@endif
+            @if (request('referrer_name'))<input type="hidden" name="referrer_name" value="{{ request('referrer_name') }}">@endif
+            @if (request()->has('referrer_class_name'))<input type="hidden" name="referrer_class_name" value="{{ request('referrer_class_name') }}">@endif
             @if (request('kategori'))<input type="hidden" name="kategori" value="{{ request('kategori') }}">@endif
 
             @if ($years->isNotEmpty())

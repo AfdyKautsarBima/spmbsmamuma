@@ -37,7 +37,7 @@ class ReportBuilder
     {
         $f += [
             'from' => null, 'to' => null, 'school_id' => null, 'status' => null, 'scope' => null,
-            'referrer_name' => null, 'referrer_class_name' => null, 'kategori' => null,
+            'referrer_name' => null, 'referrer_class_name' => null, 'referrer_class_filter' => null, 'kategori' => null,
         ];
 
         return match ($key) {
@@ -51,7 +51,7 @@ class ReportBuilder
             'tunggakan'          => $this->tunggakan($year),
             'keuangan'           => $this->keuangan($year, $user),
             'diskon'             => $this->diskon($year),
-            'reward'             => $this->reward($year),
+            'reward'             => $this->reward($year, $f),
             'reward-rincian'     => $this->rewardRincian($year, $f),
             'seragam-belum-ambil' => $this->seragamBelumAmbil($year, $f),
             'seragam-penyerahan' => $this->seragamPenyerahan($year, $f),
@@ -104,7 +104,7 @@ class ReportBuilder
         foreach ($applicants as $i => $a) {
             $rows[] = [
                 $i + 1, $a->registration_number, $a->name, $a->gender, $a->birth_place, $a->birth_date->format('d/m/Y'),
-                $a->fullAddress(), $a->father_name, $a->mother_name, $a->phone ?? '', $a->nisn ?? '',
+                $a->fullAddress(), $a->father_name, $a->mother_name, $a->student_phone ?? '', $a->phone ?? '', $a->nisn ?? '',
                 $a->school->name, $a->referrer_name ?? '', $a->referrer_class_name ?? '', $a->created_at->format('d/m/Y'),
             ];
         }
@@ -112,7 +112,7 @@ class ReportBuilder
         return (new Report('Daftar Pendaftar', $this->sub($year, $this->period($f['from'], $f['to'])), [$applicants->count().' pendaftar.']))
             ->section(null, array_map(fn ($l) => Report::col($l), [
                 'No', 'Nomor', 'Nama', 'L/P', 'Tempat lahir', 'Tanggal lahir', 'Alamat', 'Nama ayah', 'Nama ibu',
-                'No. HP', 'NISN', 'Asal sekolah', 'Nama pembawa', 'Kelas pembawa', 'Tgl input',
+                'No. HP siswa', 'No. HP orang tua/wali', 'NISN', 'Asal sekolah', 'Nama pembawa', 'Kelas pembawa', 'Tgl input',
             ]), $rows);
     }
 
@@ -154,7 +154,8 @@ class ReportBuilder
             Report::col('Nomor pendaftaran'),
             Report::col('Nama siswa'),
             Report::col('Asal sekolah'),
-            Report::col('No. HP'),
+            Report::col('No. HP siswa'),
+            Report::col('No. HP orang tua/wali'),
             Report::col('NIK murid'),
             Report::col('Nama ayah'),
             Report::col('NIK ayah'),
@@ -190,6 +191,7 @@ class ReportBuilder
                 $applicant->registration_number,
                 $applicant->name,
                 $applicant->school->name,
+                $applicant->student_phone ?? '',
                 $applicant->phone ?? '',
                 $family?->student_nik ?? '',
                 $applicant->father_name,
@@ -536,11 +538,19 @@ class ReportBuilder
         return $withdrawn ? 'mundur' : ($paid > 0 ? 'reward' : 'belum');
     }
 
-    private function reward(AcademicYear $year): Report
+    private function reward(AcademicYear $year, array $f): Report
     {
         $applicants = Applicant::query()
             ->where('academic_year_id', $year->id)
             ->whereNotNull('referrer_name')
+            ->when(
+                $f['referrer_class_filter'] === '__tanpa_kelas__',
+                fn ($q) => $q->where(fn ($query) => $query->whereNull('referrer_class_name')->orWhere('referrer_class_name', '')),
+                fn ($q) => $q->when(
+                    $f['referrer_class_filter'],
+                    fn ($query, $className) => $query->whereRaw('LOWER(referrer_class_name) = ?', [mb_strtolower($className)]),
+                ),
+            )
             ->selectRaw('applicants.id, applicants.referrer_name, applicants.referrer_class_name, applicants.withdrawn_at,
                 (select coalesce(sum(p.amount), 0) from payments p where p.applicant_id = applicants.id and p.cancelled_at is null) as paid')
             ->orderBy('applicants.id')
