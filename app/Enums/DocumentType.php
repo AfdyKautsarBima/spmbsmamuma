@@ -18,6 +18,7 @@ enum DocumentType: string
     case Sktm = 'sktm';
     case Kks = 'kks';
     case Pkh = 'pkh';
+    case SuratPeringkat = 'surat_peringkat';
     case Sertifikat = 'sertifikat';
 
     public const GROUP_LABELS = [
@@ -39,6 +40,7 @@ enum DocumentType: string
             self::Sktm          => 'SKTM',
             self::Kks           => 'Kartu KKS/PKH',
             self::Pkh           => 'Kartu KIP',
+            self::SuratPeringkat => 'Surat keterangan peringkat',
             self::Sertifikat    => 'Sertifikat kejuaraan',
         };
     }

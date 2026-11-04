@@ -54,7 +54,7 @@ class DocumentTest extends TestCase
     {
         $docs = [];
         foreach (DocumentType::cases() as $type) {
-            $docs[$type->value] = ['status' => 'belum'];
+            $docs[$type->value] = ['status' => $type === DocumentType::SuratPeringkat ? 'tidak_ada' : 'belum'];
         }
         foreach ($override as $type => $value) {
             $docs[$type] = is_array($value) ? $value : ['status' => $value];
@@ -96,7 +96,8 @@ class DocumentTest extends TestCase
         $base = [
             'akta_kelahiran' => S::Diterima, 'kk' => S::Diterima, 'skl' => S::Diterima, 'foto' => S::Diterima,
             'ktp_ayah' => S::Diterima, 'ktp_ibu' => S::Diterima,
-            'sktm' => S::TidakAda, 'kks' => S::TidakAda, 'pkh' => S::TidakAda, 'sertifikat' => S::TidakAda,
+            'sktm' => S::TidakAda, 'kks' => S::TidakAda, 'pkh' => S::TidakAda,
+            'surat_peringkat' => S::TidakAda, 'sertifikat' => S::TidakAda,
         ];
 
         $this->assertTrue($c->isComplete($this->map($base)));
@@ -183,7 +184,7 @@ class DocumentTest extends TestCase
     public function test_no_change_writes_no_log(): void
     {
         $a = $this->makeApplicant();
-        $this->submit($a, $this->docs())->assertSessionHasNoErrors();
+        $this->submit($a, $this->docs(['surat_peringkat' => 'belum']))->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('activity_logs', ['event' => 'documents.updated']);
         $this->assertSame(0, ApplicantDocument::count());
@@ -225,6 +226,43 @@ class DocumentTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertNull(ApplicantDocument::where('applicant_id', $a->id)->where('type', 'kks')->value('card_number'));
         $this->assertNull(ApplicantDocument::where('applicant_id', $a->id)->where('type', 'pkh')->value('card_number'));
+    }
+
+    public function test_accepted_ranking_certificate_requires_and_saves_class_parallel_and_rank(): void
+    {
+        $a = $this->makeApplicant();
+
+        $this->submit($a, $this->docs(['surat_peringkat' => 'diterima']))
+            ->assertSessionHasErrors([
+                'docs.surat_peringkat.ranking_type',
+                'docs.surat_peringkat.rank',
+            ]);
+
+        $this->submit($a, $this->docs([
+            'surat_peringkat' => ['status' => 'diterima', 'ranking_type' => 'angkatan', 'rank' => '0'],
+        ]))->assertSessionHasErrors([
+            'docs.surat_peringkat.ranking_type',
+            'docs.surat_peringkat.rank',
+        ]);
+
+        $this->submit($a, $this->docs([
+            'surat_peringkat' => ['status' => 'diterima', 'ranking_type' => 'kelas', 'rank' => '2'],
+        ]))->assertSessionHasNoErrors();
+
+        $document = ApplicantDocument::where('applicant_id', $a->id)->where('type', 'surat_peringkat')->firstOrFail();
+        $this->assertSame('kelas', $document->ranking_type);
+        $this->assertSame(2, $document->rank_position);
+
+        $this->actingAs($this->user)->get(route('applicants.show', $a))
+            ->assertOk()
+            ->assertSee('Surat keterangan peringkat')
+            ->assertSee('Kelas, peringkat 2');
+
+        $this->submit($a, $this->docs(['surat_peringkat' => 'tidak_ada']))->assertSessionHasNoErrors();
+        $document->refresh();
+        $this->assertNull($document->grade_level);
+        $this->assertNull($document->parallel_class);
+        $this->assertNull($document->rank_position);
     }
 
     // ---------- data KK ----------
@@ -417,7 +455,8 @@ class DocumentTest extends TestCase
     {
         return $this->docs($override + [
             'akta_kelahiran' => 'diterima', 'foto' => 'diterima', 'kk' => 'diterima', 'skl' => 'diterima',
-            'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
+            'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada',
+            'surat_peringkat' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
         ]);
     }
 
@@ -482,7 +521,8 @@ class DocumentTest extends TestCase
         foreach ([
             'akta_kelahiran' => 'diterima', 'kk' => 'diterima', 'skl' => 'diterima', 'foto' => 'diterima',
             'ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'diterima',
-            'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
+            'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada',
+            'surat_peringkat' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
         ] as $type => $status) {
             ApplicantDocument::create(['applicant_id' => $a->id, 'type' => $type, 'status' => $status]);
         }

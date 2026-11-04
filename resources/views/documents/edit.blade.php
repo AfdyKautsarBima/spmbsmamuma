@@ -56,6 +56,24 @@
                                                placeholder="Masukkan nomor kartu" class="{{ $input }}">
                                     </div>
                                 @endif
+                                @if ($type === \App\Enums\DocumentType::SuratPeringkat)
+                                    <div id="ranking-fields" class="mt-2 grid gap-2 sm:grid-cols-2" hidden>
+                                        <div>
+                                            <label for="ranking-type" class="mb-1 block text-xs text-slate-500">Jenis peringkat</label>
+                                            <select id="ranking-type" name="docs[surat_peringkat][ranking_type]" class="{{ $input }}">
+                                                <option value="">-- Pilih kelas atau paralel --</option>
+                                                <option value="kelas" @selected(old('docs.surat_peringkat.ranking_type', $row?->ranking_type) === 'kelas')>Kelas</option>
+                                                <option value="paralel" @selected(old('docs.surat_peringkat.ranking_type', $row?->ranking_type) === 'paralel')>Paralel</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="ranking-position" class="mb-1 block text-xs text-slate-500">Peringkat</label>
+                                            <input id="ranking-position" name="docs[surat_peringkat][rank]" type="number" min="1" step="1"
+                                                   value="{{ old('docs.surat_peringkat.rank', $row?->rank_position) }}" placeholder="Masukkan peringkat"
+                                                   class="{{ $input }}">
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                             <select id="doc-{{ $type->value }}" name="docs[{{ $type->value }}][status]" class="{{ $input }}">
                                 @foreach ($type->allowedStatuses() as $status)
@@ -177,6 +195,7 @@
             var sklStatus = form.querySelector('[name="docs[skl][status]"]');
             var kksStatus = form.querySelector('[name="docs[kks][status]"]');
             var kipStatus = form.querySelector('[name="docs[pkh][status]"]');
+            var rankingStatus = form.querySelector('[name="docs[surat_peringkat][status]"]');
             var fatherAbsent = form.querySelector('[name="family[father_absent]"]');
             var motherAbsent = form.querySelector('[name="family[mother_absent]"]');
 
@@ -192,6 +211,7 @@
                 toggle(document.getElementById('nisn-section'), sklStatus.value === 'diterima');
                 toggle(document.getElementById('card-number-kks'), kksStatus.value === 'diterima');
                 toggle(document.getElementById('card-number-pkh'), kipStatus.value === 'diterima');
+                toggle(document.getElementById('ranking-fields'), rankingStatus.value === 'diterima');
 
                 if (kk) {
                     toggle(document.getElementById('father-fields'), !fatherAbsent.checked);
@@ -205,7 +225,7 @@
                 }
             }
 
-            [kkStatus, sklStatus, kksStatus, kipStatus, fatherAbsent, motherAbsent].forEach(function (el) {
+            [kkStatus, sklStatus, kksStatus, kipStatus, rankingStatus, fatherAbsent, motherAbsent].forEach(function (el) {
                 el.addEventListener('change', refresh);
             });
             refresh();

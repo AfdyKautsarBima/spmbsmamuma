@@ -28,7 +28,13 @@
                         @if ($status === \App\Enums\DocumentStatus::Diterima && $card?->card_number)
                             <span class="text-slate-500">({{ $card->card_number }})</span>
                         @endif
-                    @endif
+                        @endif
+                        @if ($type === \App\Enums\DocumentType::SuratPeringkat && $status === \App\Enums\DocumentStatus::Diterima)
+                            @php($ranking = $applicant->documents->first(fn ($d) => $d->type === $type))
+                            @if ($ranking?->rank_position)
+                                <span class="text-slate-500">({{ ucfirst($ranking->ranking_type) }}, peringkat {{ $ranking->rank_position }})</span>
+                            @endif
+                        @endif
                 </span>
                 <span class="{{ $status === \App\Enums\DocumentStatus::Diterima ? 'text-green-700' : ($status === \App\Enums\DocumentStatus::TidakAda ? 'text-slate-500' : 'text-amber-700') }}">{{ $status->label() }}</span>
             </div>

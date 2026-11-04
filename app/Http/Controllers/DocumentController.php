@@ -122,12 +122,23 @@ class DocumentController extends Controller
             $newCardNumber = $isCard && $newStatus === DocumentStatus::Diterima
                 ? (trim((string) ($v['docs'][$type->value]['card_number'] ?? '')) ?: null)
                 : null;
+            $isRankingCertificate = $type === DocumentType::SuratPeringkat;
+            $oldRankingType = $row?->ranking_type;
+            $newRankingType = $isRankingCertificate && $newStatus === DocumentStatus::Diterima
+                ? ($v['docs'][$type->value]['ranking_type'] ?? null)
+                : null;
+            $oldRank = $row?->rank_position;
+            $newRank = $isRankingCertificate && $newStatus === DocumentStatus::Diterima
+                ? (int) $v['docs'][$type->value]['rank']
+                : null;
 
             $statusChanged = $oldStatus !== $newStatus;
             $noteChanged = $isCertificate && $oldNote !== $newNote;
             $cardNumberChanged = $isCard && $oldCardNumber !== $newCardNumber;
+            $rankingChanged = $isRankingCertificate
+                && ($oldRankingType !== $newRankingType || $oldRank != $newRank);
 
-            if (! $statusChanged && ! $noteChanged && ! $cardNumberChanged) {
+            if (! $statusChanged && ! $noteChanged && ! $cardNumberChanged && ! $rankingChanged) {
                 continue;
             }
 
@@ -137,6 +148,8 @@ class DocumentController extends Controller
                     'status' => $newStatus,
                     'note' => $newNote,
                     'card_number' => $newCardNumber,
+                    'ranking_type' => $newRankingType,
+                    'rank_position' => $newRank,
                     'handled_at' => now(),
                     'handled_by' => $userId,
                 ],
@@ -153,6 +166,12 @@ class DocumentController extends Controller
             if ($cardNumberChanged) {
                 $old['Nomor '.$type->label()] = $oldCardNumber;
                 $new['Nomor '.$type->label()] = $newCardNumber;
+            }
+            if ($rankingChanged) {
+                $old['Jenis peringkat surat keterangan'] = $oldRankingType;
+                $new['Jenis peringkat surat keterangan'] = $newRankingType;
+                $old['Peringkat surat keterangan peringkat'] = $oldRank;
+                $new['Peringkat surat keterangan peringkat'] = $newRank;
             }
         }
 

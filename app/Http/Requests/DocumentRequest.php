@@ -70,6 +70,18 @@ class DocumentRequest extends FormRequest
                 'digits_between:1,50',
             ];
         }
+        $rules['docs.surat_peringkat.ranking_type'] = [
+            Rule::requiredIf($this->input('docs.surat_peringkat.status') === 'diterima'),
+            'nullable',
+            Rule::in(['kelas', 'paralel']),
+        ];
+        $rules['docs.surat_peringkat.rank'] = [
+            Rule::requiredIf($this->input('docs.surat_peringkat.status') === 'diterima'),
+            'nullable',
+            'integer',
+            'min:1',
+            'max:2147483647',
+        ];
 
         if ($this->input('docs.kk.status') === 'diterima') {
             $rules = array_merge($rules, $this->familyRules($applicant));
@@ -163,6 +175,8 @@ class DocumentRequest extends FormRequest
             'nisn'                           => 'NISN',
             'docs.kks.card_number'           => 'nomor kartu KKS/PKH',
             'docs.pkh.card_number'           => 'nomor kartu KIP',
+            'docs.surat_peringkat.ranking_type' => 'jenis peringkat',
+            'docs.surat_peringkat.rank'      => 'peringkat',
             'family.number'                  => 'nomor KK',
             'family.student_nik'             => 'NIK murid',
             'family.father_name'             => 'nama ayah',
@@ -195,6 +209,8 @@ class DocumentRequest extends FormRequest
             'family.guardian_phone.regex'      => 'Nomor HP wali hanya berisi angka, diawali 08, panjang 10 sampai 13 digit.',
             'digits'                           => ':attribute harus :digits digit angka.',
             'digits_between'                   => ':attribute harus berupa angka dengan panjang :min sampai :max digit.',
+            'docs.surat_peringkat.rank.integer' => ':attribute harus berupa angka.',
+            'docs.surat_peringkat.rank.min'     => ':attribute harus angka positif.',
         ];
     }
 }
