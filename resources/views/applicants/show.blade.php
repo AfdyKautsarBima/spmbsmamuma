@@ -9,6 +9,9 @@
         </h1>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('applicants.print', $applicant) }}" target="_blank" class="rounded border bg-white px-4 py-2 text-sm hover:bg-slate-50">Cetak bukti</a>
+            @if (! $applicant->trashed() && $enrollmentSummary['status']->value === 'terdaftar' && $whatsappUrl)
+                <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" class="rounded border bg-white px-4 py-2 text-sm hover:bg-slate-50">Hubungi via WhatsApp</a>
+            @endif
             @if ($canEdit)
                 <a href="{{ route('applicants.edit', $applicant) }}" class="rounded bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700">Ubah</a>
             @endif
@@ -54,7 +57,7 @@
 
     @include('documents.summary', ['applicant' => $applicant, 'canEdit' => $canEdit])
 
-    @include('enrollment.status-card', ['applicant' => $applicant])
+    @include('enrollment.status-card', ['applicant' => $applicant, 'enrollmentSummary' => $enrollmentSummary])
 
     @if (auth()->user()->isAdmin())
         <div class="mt-4 rounded-lg bg-white p-4 shadow-sm">

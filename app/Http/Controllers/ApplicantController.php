@@ -8,6 +8,8 @@ use App\Models\ActivityLog;
 use App\Models\Applicant;
 use App\Models\School;
 use App\Services\ApplicantChecks;
+use App\Services\EnrollmentService;
+use App\Services\WhatsAppMessageTemplate;
 use App\Support\DateInput;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -110,7 +112,8 @@ class ApplicantController extends Controller
     {
         abort_if($applicant->trashed() && ! $request->user()->isAdmin(), 404);
 
-        $applicant->load(['school', 'referrer', 'academicYear', 'creator']);
+        $applicant->load(['school', 'referrer', 'academicYear', 'creator', 'billing', 'payments']);
+        $enrollmentSummary = app(EnrollmentService::class)->summary($applicant);
 
         $history = ActivityLog::with('user')
             ->where('subject_type', $applicant->getMorphClass())
@@ -122,6 +125,10 @@ class ApplicantController extends Controller
             'applicant' => $applicant,
             'history'   => $history,
             'canEdit'   => ! $applicant->trashed() && $applicant->academicYear->is_active,
+            'enrollmentSummary' => $enrollmentSummary,
+            'whatsappUrl' => $applicant->phone
+                ? app(WhatsAppMessageTemplate::class)->urlFor($applicant, '62'.substr($applicant->phone, 1))
+                : null,
         ]);
     }
 

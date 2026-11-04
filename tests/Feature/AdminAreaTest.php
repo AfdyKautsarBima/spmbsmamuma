@@ -20,6 +20,9 @@ class AdminAreaTest extends TestCase
             $this->actingAs($user)->get('/users')->assertForbidden();
             $this->actingAs($user)->get('/academic-years')->assertForbidden();
             $this->actingAs($user)->get('/activity-logs')->assertForbidden();
+            $this->actingAs($user)->get(route('whatsapp-template.edit'))->assertForbidden();
+            $this->actingAs($user)->put(route('whatsapp-template.update'), ['message' => 'Tidak boleh'])
+                ->assertForbidden();
             $this->actingAs($user)->get('/dashboard')->assertOk();
         }
     }

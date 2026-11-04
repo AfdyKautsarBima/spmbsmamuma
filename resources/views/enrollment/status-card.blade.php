@@ -1,6 +1,4 @@
 @php
-    $applicant->loadMissing(['billing', 'payments']);
-    $enrollmentSummary = app(\App\Services\EnrollmentService::class)->summary($applicant);
     $rpFmt = fn ($n) => 'Rp '.number_format((int) $n, 0, ',', '.');
 @endphp
 

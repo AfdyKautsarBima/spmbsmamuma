@@ -19,6 +19,7 @@ use App\Http\Controllers\SeragamController;
 use App\Http\Controllers\UniformSizeController;
 use App\Http\Controllers\UniformTypeController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WhatsAppTemplateController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -79,6 +80,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('pengaturan/template-whatsapp', [WhatsAppTemplateController::class, 'edit'])->name('whatsapp-template.edit');
+        Route::put('pengaturan/template-whatsapp', [WhatsAppTemplateController::class, 'update'])->name('whatsapp-template.update');
+
         Route::delete('applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::patch('applicants/{applicant}/restore', [ApplicantController::class, 'restore'])->withTrashed()->name('applicants.restore');
 
