@@ -12,7 +12,9 @@ enum DocumentType: string
     case Foto = 'foto';
     // Orang tua / wali
     case KtpAyah = 'ktp_ayah';
+    case SuratKematianAyah = 'surat_kematian_ayah';
     case KtpIbu = 'ktp_ibu';
+    case SuratKematianIbu = 'surat_kematian_ibu';
     case KtpWali = 'ktp_wali';
     // Kondisional
     case Sktm = 'sktm';
@@ -35,7 +37,9 @@ enum DocumentType: string
             self::Skl           => 'FC SKL',
             self::Foto          => 'Foto diri',
             self::KtpAyah       => 'KTP ayah',
+            self::SuratKematianAyah => 'Surat keterangan kematian ayah',
             self::KtpIbu        => 'KTP ibu',
+            self::SuratKematianIbu => 'Surat keterangan kematian ibu',
             self::KtpWali       => 'KTP wali',
             self::Sktm          => 'SKTM',
             self::Kks           => 'Kartu KKS/PKH',
@@ -49,7 +53,8 @@ enum DocumentType: string
     {
         return match ($this) {
             self::AktaKelahiran, self::Kk, self::Skl, self::Foto => 'wajib',
-            self::KtpAyah, self::KtpIbu, self::KtpWali           => 'orangtua',
+            self::KtpAyah, self::SuratKematianAyah, self::KtpIbu,
+            self::SuratKematianIbu, self::KtpWali                 => 'orangtua',
             default                                               => 'kondisional',
         };
     }
@@ -57,6 +62,10 @@ enum DocumentType: string
     /** Berkas wajib hanya boleh Belum atau Diterima. Lainnya boleh juga "Tidak ada". */
     public function allowedStatuses(): array
     {
+        if (in_array($this, [self::SuratKematianAyah, self::SuratKematianIbu], true)) {
+            return [DocumentStatus::Belum, DocumentStatus::Diterima];
+        }
+
         return $this->group() === 'wajib'
             ? [DocumentStatus::Belum, DocumentStatus::Diterima]
             : DocumentStatus::cases();

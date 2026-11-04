@@ -58,6 +58,27 @@ class DocumentRequest extends FormRequest
         $rules = [];
 
         foreach (DocumentType::cases() as $type) {
+            if ($type === DocumentType::SuratKematianAyah) {
+                if ($this->input('docs.ktp_ayah.status') === 'tidak_ada') {
+                    $rules['docs.surat_kematian_ayah.status'] = [
+                        'required',
+                        Rule::in(array_map(fn ($status) => $status->value, $type->allowedStatuses())),
+                    ];
+                }
+
+                continue;
+            }
+            if ($type === DocumentType::SuratKematianIbu) {
+                if ($this->input('docs.ktp_ibu.status') === 'tidak_ada') {
+                    $rules['docs.surat_kematian_ibu.status'] = [
+                        'required',
+                        Rule::in(array_map(fn ($status) => $status->value, $type->allowedStatuses())),
+                    ];
+                }
+
+                continue;
+            }
+
             $allowed = array_map(fn ($s) => $s->value, $type->allowedStatuses());
             $rules["docs.{$type->value}.status"] = ['required', Rule::in($allowed)];
         }

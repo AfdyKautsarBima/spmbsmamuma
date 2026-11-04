@@ -97,6 +97,7 @@ class DocumentTest extends TestCase
             'akta_kelahiran' => S::Diterima, 'kk' => S::Diterima, 'skl' => S::Diterima, 'foto' => S::Diterima,
             'ktp_ayah' => S::Diterima, 'ktp_ibu' => S::Diterima,
             'sktm' => S::TidakAda, 'kks' => S::TidakAda, 'pkh' => S::TidakAda,
+            'surat_kematian_ayah' => S::Diterima, 'surat_kematian_ibu' => S::Diterima,
             'surat_peringkat' => S::TidakAda, 'sertifikat' => S::TidakAda,
         ];
 
@@ -109,6 +110,14 @@ class DocumentTest extends TestCase
         // satu orang tua tidak ada/almarhum (KTP "Tidak ada"), tanpa wali: LENGKAP
         $this->assertTrue($c->isComplete($this->map(['ktp_ibu' => S::TidakAda] + $base)));
         $this->assertTrue($c->isComplete($this->map(['ktp_ayah' => S::TidakAda] + $base)));
+        $this->assertSame(
+            ['Surat keterangan kematian ayah'],
+            $c->missing($this->map(['ktp_ayah' => S::TidakAda, 'surat_kematian_ayah' => S::Belum] + $base)),
+        );
+        $this->assertSame(
+            ['Surat keterangan kematian ibu'],
+            $c->missing($this->map(['ktp_ibu' => S::TidakAda, 'surat_kematian_ibu' => S::Belum] + $base)),
+        );
 
         // satu orang tua diterima, yang lain masih Belum: belum lengkap
         $this->assertSame(['KTP orang tua/wali'], $c->missing($this->map(['ktp_ibu' => S::Belum] + $base)));
@@ -198,6 +207,42 @@ class DocumentTest extends TestCase
         $this->submit($a, $this->docs(['foto' => 'tidak_ada']))->assertSessionHasErrors('docs.foto.status');
         $this->submit($a, $this->docs(['kks' => 'tidak_ada', 'ktp_ayah' => 'tidak_ada']))->assertSessionHasNoErrors();
         $this->submit($a, $this->docs(['kks' => 'ngawur']))->assertSessionHasErrors('docs.kks.status');
+    }
+
+    public function test_parent_death_certificate_is_required_when_ktp_is_not_available(): void
+    {
+        $a = $this->makeApplicant();
+        $extra = ['nisn' => '0012345678', 'family' => $this->family()];
+        $docs = $this->docs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'diterima']);
+        unset($docs['surat_kematian_ayah']);
+
+        $this->submit($a, $docs, $extra)->assertSessionHasErrors('docs.surat_kematian_ayah.status');
+
+        $this->submit($a, $this->fullDocs([
+            'ktp_ayah' => 'tidak_ada',
+            'ktp_ibu' => 'diterima',
+            'surat_kematian_ayah' => 'belum',
+        ]), $extra)->assertSessionHasNoErrors();
+        $this->assertFalse($a->fresh()->documents_complete);
+
+        $this->actingAs($this->user)->get(route('applicants.show', $a))
+            ->assertOk()
+            ->assertSee('Tidak ada/almarhum')
+            ->assertSee('Surat keterangan kematian ayah');
+
+        $motherDocs = $this->fullDocs([
+            'ktp_ayah' => 'diterima',
+            'ktp_ibu' => 'tidak_ada',
+        ]);
+        unset($motherDocs['surat_kematian_ibu']);
+        $this->submit($a, $motherDocs, $extra)->assertSessionHasErrors('docs.surat_kematian_ibu.status');
+
+        $this->submit($a, $this->fullDocs([
+            'ktp_ayah' => 'tidak_ada',
+            'ktp_ibu' => 'diterima',
+            'surat_kematian_ayah' => 'diterima',
+        ]), $extra)->assertSessionHasNoErrors();
+        $this->assertTrue($a->fresh()->documents_complete);
     }
 
     public function test_accepted_kks_pkh_and_kip_require_and_save_card_numbers(): void
@@ -464,7 +509,11 @@ class DocumentTest extends TestCase
     {
         $a = $this->makeApplicant();
 
-        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'diterima']), [
+        $this->submit($a, $this->fullDocs([
+            'ktp_ayah' => 'tidak_ada',
+            'ktp_ibu' => 'diterima',
+            'surat_kematian_ayah' => 'diterima',
+        ]), [
             'nisn'   => '0012345678',
             'family' => $this->family(['father_absent' => '1']),
         ])->assertSessionHasNoErrors();
@@ -504,11 +553,22 @@ class DocumentTest extends TestCase
             'guardian_occupation_id' => $this->job->id];
         $family = $this->family(['father_absent' => '1', 'mother_absent' => '1'] + $guardian);
 
-        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'tidak_ada']), ['nisn' => '0012345678', 'family' => $family])
+        $this->submit($a, $this->fullDocs([
+            'ktp_ayah' => 'tidak_ada',
+            'ktp_ibu' => 'tidak_ada',
+            'surat_kematian_ayah' => 'diterima',
+            'surat_kematian_ibu' => 'diterima',
+        ]), ['nisn' => '0012345678', 'family' => $family])
             ->assertSessionHasNoErrors();
         $this->assertFalse($a->fresh()->documents_complete);
 
-        $this->submit($a, $this->fullDocs(['ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'tidak_ada', 'ktp_wali' => 'diterima']), ['nisn' => '0012345678', 'family' => $family])
+        $this->submit($a, $this->fullDocs([
+            'ktp_ayah' => 'tidak_ada',
+            'ktp_ibu' => 'tidak_ada',
+            'ktp_wali' => 'diterima',
+            'surat_kematian_ayah' => 'diterima',
+            'surat_kematian_ibu' => 'diterima',
+        ]), ['nisn' => '0012345678', 'family' => $family])
             ->assertSessionHasNoErrors();
         $this->assertTrue($a->fresh()->documents_complete);
     }
@@ -522,6 +582,7 @@ class DocumentTest extends TestCase
             'akta_kelahiran' => 'diterima', 'kk' => 'diterima', 'skl' => 'diterima', 'foto' => 'diterima',
             'ktp_ayah' => 'tidak_ada', 'ktp_ibu' => 'diterima',
             'sktm' => 'tidak_ada', 'kks' => 'tidak_ada', 'pkh' => 'tidak_ada',
+            'surat_kematian_ayah' => 'diterima',
             'surat_peringkat' => 'tidak_ada', 'sertifikat' => 'tidak_ada',
         ] as $type => $status) {
             ApplicantDocument::create(['applicant_id' => $a->id, 'type' => $type, 'status' => $status]);

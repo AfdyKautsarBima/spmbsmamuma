@@ -112,7 +112,9 @@ class DocumentController extends Controller
         foreach (DocumentType::cases() as $type) {
             $row = $current->get($type->value);
             $oldStatus = $row?->status ?? DocumentStatus::Belum;
-            $newStatus = DocumentStatus::from($v['docs'][$type->value]['status']);
+            $newStatus = DocumentStatus::from(
+                $v['docs'][$type->value]['status'] ?? $row?->status?->value ?? DocumentStatus::Belum->value,
+            );
 
             $isCertificate = $type === DocumentType::Sertifikat;
             $oldNote = $row?->note;

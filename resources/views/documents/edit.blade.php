@@ -8,7 +8,7 @@
     $input = 'w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm';
     $groupHints = [
         'wajib'       => 'Harus berstatus Diterima.',
-        'orangtua'    => 'Lengkap bila: KTP ayah dan ibu diterima; atau satu orang tua tidak ada/almarhum (pilih Tidak ada, atau dicentang di data KK) dan KTP orang tua yang lain diterima; atau KTP wali diterima.',
+        'orangtua'    => 'Lengkap bila: KTP ayah dan ibu diterima; atau satu orang tua tidak ada/almarhum dan KTP orang tua yang lain diterima; atau KTP wali diterima. Surat keterangan kematian wajib diterima jika status KTP ayah/ibu Tidak ada/almarhum.',
         'kondisional' => 'Putuskan Diterima atau Tidak ada (misalnya murid bukan penerima KKS). Jangan dibiarkan Belum.',
     ];
 @endphp
@@ -38,7 +38,13 @@
                 <div class="space-y-3">
                     @foreach ($types as $type)
                         @php($row = $documents->get($type->value))
-                        <div class="grid items-start gap-2 sm:grid-cols-[1fr_190px]">
+                        @php($conditionalStatus = match ($type) {
+                            \App\Enums\DocumentType::SuratKematianAyah => old('docs.ktp_ayah.status', $statuses['ktp_ayah']->value),
+                            \App\Enums\DocumentType::SuratKematianIbu => old('docs.ktp_ibu.status', $statuses['ktp_ibu']->value),
+                            default => null,
+                        })
+                        <div id="doc-row-{{ $type->value }}" class="grid items-start gap-2 sm:grid-cols-[1fr_190px]"
+                             @if ($conditionalStatus !== null && $conditionalStatus !== 'tidak_ada') hidden @endif>
                             <div>
                                 <label for="doc-{{ $type->value }}" class="text-sm font-medium">{{ $type->label() }}</label>
                                 @if ($row?->handled_at)
@@ -77,7 +83,7 @@
                             </div>
                             <select id="doc-{{ $type->value }}" name="docs[{{ $type->value }}][status]" class="{{ $input }}">
                                 @foreach ($type->allowedStatuses() as $status)
-                                    <option value="{{ $status->value }}" @selected(old("docs.{$type->value}.status", $statuses[$type->value]->value) === $status->value)>{{ $status->label() }}</option>
+                                    <option value="{{ $status->value }}" @selected(old("docs.{$type->value}.status", $statuses[$type->value]->value) === $status->value)>{{ in_array($type, [\App\Enums\DocumentType::KtpAyah, \App\Enums\DocumentType::KtpIbu], true) && $status === \App\Enums\DocumentStatus::TidakAda ? 'Tidak ada/almarhum' : $status->label() }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -196,6 +202,8 @@
             var kksStatus = form.querySelector('[name="docs[kks][status]"]');
             var kipStatus = form.querySelector('[name="docs[pkh][status]"]');
             var rankingStatus = form.querySelector('[name="docs[surat_peringkat][status]"]');
+            var fatherKtpStatus = form.querySelector('[name="docs[ktp_ayah][status]"]');
+            var motherKtpStatus = form.querySelector('[name="docs[ktp_ibu][status]"]');
             var fatherAbsent = form.querySelector('[name="family[father_absent]"]');
             var motherAbsent = form.querySelector('[name="family[mother_absent]"]');
 
@@ -212,6 +220,8 @@
                 toggle(document.getElementById('card-number-kks'), kksStatus.value === 'diterima');
                 toggle(document.getElementById('card-number-pkh'), kipStatus.value === 'diterima');
                 toggle(document.getElementById('ranking-fields'), rankingStatus.value === 'diterima');
+                toggle(document.getElementById('doc-row-surat_kematian_ayah'), fatherKtpStatus.value === 'tidak_ada');
+                toggle(document.getElementById('doc-row-surat_kematian_ibu'), motherKtpStatus.value === 'tidak_ada');
 
                 if (kk) {
                     toggle(document.getElementById('father-fields'), !fatherAbsent.checked);
@@ -225,7 +235,7 @@
                 }
             }
 
-            [kkStatus, sklStatus, kksStatus, kipStatus, rankingStatus, fatherAbsent, motherAbsent].forEach(function (el) {
+            [kkStatus, sklStatus, kksStatus, kipStatus, rankingStatus, fatherKtpStatus, motherKtpStatus, fatherAbsent, motherAbsent].forEach(function (el) {
                 el.addEventListener('change', refresh);
             });
             refresh();

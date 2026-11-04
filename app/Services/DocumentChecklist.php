@@ -49,6 +49,10 @@ class DocumentChecklist
         foreach (DocumentType::cases() as $type) {
             $status = $map[$type->value];
 
+            if (in_array($type, [DocumentType::SuratKematianAyah, DocumentType::SuratKematianIbu], true)) {
+                continue;
+            }
+
             if ($type->group() === 'wajib' && $status !== DocumentStatus::Diterima) {
                 $missing[] = $type->label();
             }
@@ -71,6 +75,13 @@ class DocumentChecklist
         $motherOk = $mother === DocumentStatus::Diterima;
         $fatherGone = ! $fatherOk && ($father === DocumentStatus::TidakAda || ($absent['father'] ?? false));
         $motherGone = ! $motherOk && ($mother === DocumentStatus::TidakAda || ($absent['mother'] ?? false));
+
+        if ($father === DocumentStatus::TidakAda && $map[DocumentType::SuratKematianAyah->value] !== DocumentStatus::Diterima) {
+            $missing[] = DocumentType::SuratKematianAyah->label();
+        }
+        if ($mother === DocumentStatus::TidakAda && $map[DocumentType::SuratKematianIbu->value] !== DocumentStatus::Diterima) {
+            $missing[] = DocumentType::SuratKematianIbu->label();
+        }
 
         $parentsOk = $guardianOk
             || (($fatherOk || $fatherGone) && ($motherOk || $motherGone) && ($fatherOk || $motherOk));

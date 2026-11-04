@@ -20,6 +20,12 @@
     <div class="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
         @foreach (\App\Enums\DocumentType::cases() as $type)
             @php($status = $statusMap[$type->value])
+            @if ($type === \App\Enums\DocumentType::SuratKematianAyah && $statusMap['ktp_ayah'] !== \App\Enums\DocumentStatus::TidakAda)
+                @continue
+            @endif
+            @if ($type === \App\Enums\DocumentType::SuratKematianIbu && $statusMap['ktp_ibu'] !== \App\Enums\DocumentStatus::TidakAda)
+                @continue
+            @endif
             <div class="flex justify-between border-b border-slate-100 py-1">
                 <span>
                     {{ $type->label() }}
@@ -36,7 +42,7 @@
                             @endif
                         @endif
                 </span>
-                <span class="{{ $status === \App\Enums\DocumentStatus::Diterima ? 'text-green-700' : ($status === \App\Enums\DocumentStatus::TidakAda ? 'text-slate-500' : 'text-amber-700') }}">{{ $status->label() }}</span>
+                <span class="{{ $status === \App\Enums\DocumentStatus::Diterima ? 'text-green-700' : ($status === \App\Enums\DocumentStatus::TidakAda ? 'text-slate-500' : 'text-amber-700') }}">{{ in_array($type, [\App\Enums\DocumentType::KtpAyah, \App\Enums\DocumentType::KtpIbu], true) && $status === \App\Enums\DocumentStatus::TidakAda ? 'Tidak ada/almarhum' : $status->label() }}</span>
             </div>
         @endforeach
     </div>
