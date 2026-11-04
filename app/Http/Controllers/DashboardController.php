@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Enums\Role;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
+use App\Models\School;
 use App\Models\User;
 use App\Services\ApplicantChecks;
 use App\Services\EnrollmentStats;
 use App\Services\UniformStats;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -47,8 +49,31 @@ class DashboardController extends Controller
             ? $uniformStats->forYear($year)
             : null;
 
+        $charts = null;
+        if ($year && $user->isAdmin()) {
+            $enrollmentCounts = $enrollment['counts'];
+            $charts = [
+                'status' => [
+                    ['label' => 'Pendaftar', 'count' => $enrollmentCounts['terdaftar'], 'color' => '#64748b'],
+                    ['label' => 'Daftar ulang', 'count' => $enrollmentCounts['menyicil'] + $enrollmentCounts['lunas'], 'color' => '#16a34a'],
+                    ['label' => 'Cabut', 'count' => $enrollmentCounts['mundur'], 'color' => '#dc2626'],
+                ],
+                'schools' => Applicant::query()
+                    ->where('applicants.academic_year_id', $year->id)
+                    ->join('schools', 'schools.id', '=', 'applicants.school_id')
+                    ->select('schools.name', DB::raw('count(*) as total'))
+                    ->groupBy('schools.id', 'schools.name')
+                    ->orderByDesc('total')
+                    ->orderBy('schools.name')
+                    ->get()
+                    ->map(fn ($row) => ['name' => $row->name, 'count' => (int) $row->total])
+                    ->all(),
+            ];
+        }
+
         return view('dashboard', [
-            'year' => $year, 'roleCounts' => $roleCounts, 'stats' => $stats, 'enrollment' => $enrollment, 'uniform' => $uniform,
+            'year' => $year, 'roleCounts' => $roleCounts, 'stats' => $stats, 'enrollment' => $enrollment,
+            'uniform' => $uniform, 'charts' => $charts,
         ]);
     }
 }

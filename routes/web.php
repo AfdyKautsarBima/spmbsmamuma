@@ -11,7 +11,6 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\OccupationController;
 use App\Http\Controllers\PasswordController;
-use App\Http\Controllers\ReferrerController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SchoolController;
@@ -43,9 +42,6 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Panitia pendaftaran dan admin
     Route::middleware('role:admin,pendaftaran')->group(function () {
         Route::get('wilayah', [RegionController::class, 'children'])->name('regions.children');
-        Route::get('referrers/search', [ReferrerController::class, 'search'])->name('referrers.search');
-        Route::post('referrers', [ReferrerController::class, 'store'])->name('referrers.store');
-
         Route::get('applicants', [ApplicantController::class, 'index'])->name('applicants.index');
         Route::get('applicants/create', [ApplicantController::class, 'create'])->name('applicants.create');
         Route::post('applicants', [ApplicantController::class, 'store'])->name('applicants.store');
@@ -127,9 +123,5 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::patch('occupations/{occupation}/toggle-active', [OccupationController::class, 'toggleActive'])
             ->name('occupations.toggle-active');
 
-        Route::get('referrers', [ReferrerController::class, 'index'])->name('referrers.index');
-        Route::put('referrers/{referrer}', [ReferrerController::class, 'update'])->name('referrers.update');
-        Route::get('referrers/{referrer}/merge', [ReferrerController::class, 'mergeForm'])->name('referrers.merge.form');
-        Route::post('referrers/{referrer}/merge', [ReferrerController::class, 'merge'])->name('referrers.merge');
     });
 });

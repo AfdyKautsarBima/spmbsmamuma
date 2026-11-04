@@ -76,12 +76,13 @@ class ReportController extends Controller
             'school_id' => $this->queryValues($request->query('school_id'), true),
             'status'    => $this->queryValues($request->query('status')),
             'scope'     => $this->queryValues($request->query('scope')),
-            'referrer'  => $request->integer('referrer') ?: null,
+            'referrer_name' => is_string($request->query('referrer_name')) ? trim($request->query('referrer_name')) : null,
+            'referrer_class_name' => is_string($request->query('referrer_class_name')) ? trim($request->query('referrer_class_name')) : null,
             'kategori'  => $request->query('kategori') ?: null,
         ];
 
         if ($key === 'reward-rincian') {
-            abort_if(! $filters['referrer'], 404);
+            abort_if(! $filters['referrer_name'], 404);
         }
 
         $report = $this->builder->build($key, $year, $filters, $user);

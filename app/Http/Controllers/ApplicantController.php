@@ -34,7 +34,7 @@ class ApplicantController extends Controller
             $year = AcademicYear::find($request->integer('year')) ?? $active;
         }
 
-        $query = Applicant::query()->with(['school', 'referrer']);
+        $query = Applicant::query()->with('school');
 
         if ($user->isAdmin() && $request->status === 'dihapus') {
             $query->onlyTrashed();
@@ -99,7 +99,7 @@ class ApplicantController extends Controller
             "Pendaftar {$applicant->registration_number} {$applicant->name} ditambahkan",
             $applicant,
             null,
-            Arr::only($payload, ['registration_number', 'name', 'school_id', 'referrer_id']),
+            Arr::only($payload, ['registration_number', 'name', 'school_id', 'referrer_name', 'referrer_class_name']),
         );
 
         // Kembali ke form kosong agar input berikutnya bisa langsung dilanjutkan.
@@ -112,7 +112,7 @@ class ApplicantController extends Controller
     {
         abort_if($applicant->trashed() && ! $request->user()->isAdmin(), 404);
 
-        $applicant->load(['school', 'referrer', 'academicYear', 'creator', 'billing', 'payments']);
+        $applicant->load(['school', 'academicYear', 'creator', 'billing', 'payments']);
         $enrollmentSummary = app(EnrollmentService::class)->summary($applicant);
 
         $history = ActivityLog::with('user')
@@ -149,10 +149,12 @@ class ApplicantController extends Controller
         $this->ensureEditable($applicant);
         $payload = $request->payload();
 
+        $normalizeReferrer = fn (?string $value) => $value === null ? null : trim(preg_replace('/\s+/u', ' ', $value));
         if ($applicant->referrerLocked()
             && ! $request->user()->isAdmin()
-            && $payload['referrer_id'] !== $applicant->referrer_id) {
-            return back()->withInput()->withErrors(['referrer_id' => 'Pembawa sudah terkunci. Hubungi admin untuk mengubahnya.']);
+            && ($payload['referrer_name'] !== $normalizeReferrer($applicant->referrer_name)
+                || $payload['referrer_class_name'] !== $normalizeReferrer($applicant->referrer_class_name))) {
+            return back()->withInput()->withErrors(['referrer_name' => 'Data pembawa sudah terkunci. Hubungi admin untuk mengubahnya.']);
         }
 
         if ($payload['person_key'] !== $applicant->person_key) {
@@ -223,7 +225,7 @@ class ApplicantController extends Controller
     {
         abort_if($applicant->trashed() && ! $request->user()->isAdmin(), 404);
 
-        $applicant->load(['school', 'referrer', 'academicYear', 'creator']);
+        $applicant->load(['school', 'academicYear', 'creator']);
 
         return view('applicants.print', ['applicant' => $applicant]);
     }

@@ -6,11 +6,12 @@ use App\Enums\Role;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\Payment;
-use App\Models\Referrer;
 use App\Models\Region;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ApplicantTest extends TestCase
@@ -19,7 +20,6 @@ class ApplicantTest extends TestCase
 
     private AcademicYear $year;
     private School $school;
-    private Referrer $referrer;
     private User $user;
 
     protected function setUp(): void
@@ -39,7 +39,6 @@ class ApplicantTest extends TestCase
         }
 
         $this->school = School::create(['name' => 'SMP Negeri 1 Kudus', 'regency_code' => '33.19', 'regency_name' => 'KAB. KUDUS']);
-        $this->referrer = Referrer::create(['name' => 'Budi Santoso', 'name_key' => 'budi santoso']);
         $this->user = User::factory()->create(); // panitia pendaftaran
     }
 
@@ -61,7 +60,8 @@ class ApplicantTest extends TestCase
             'mother_name'         => 'Siti Aminah',
             'phone'               => '081234567890',
             'school_id'           => $this->school->id,
-            'referrer_id'         => $this->referrer->id,
+            'referrer_name'       => 'Budi Santoso',
+            'referrer_class_name' => 'XI IPA 1',
         ], $override);
     }
 
@@ -280,10 +280,20 @@ class ApplicantTest extends TestCase
         $inactive = School::create(['name' => 'SMP Tutup', 'regency_code' => '33.19', 'regency_name' => 'KAB. KUDUS', 'is_active' => false]);
 
         $this->actingAs($this->user)->post('/applicants', $this->payload(['school_id' => $inactive->id]))->assertSessionHasErrors('school_id');
-        $this->actingAs($this->user)->post('/applicants', $this->payload(['referrer_id' => null]))->assertSessionHasNoErrors();
-        $this->assertNull(Applicant::firstOrFail()->referrer_id);
-        $this->actingAs($this->user)->post('/applicants', $this->payload(['registration_number' => 'A-002', 'referrer_id' => 9999]))
-            ->assertSessionHasErrors('referrer_id');
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'referrer_name' => null,
+            'referrer_class_name' => null,
+        ]))->assertSessionHasNoErrors();
+        $this->assertNull(Applicant::firstOrFail()->referrer_name);
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-002',
+            'referrer_name' => str_repeat('x', 101),
+        ]))->assertSessionHasErrors('referrer_name');
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-003',
+            'referrer_name' => null,
+            'referrer_class_name' => 'XI IPA 1',
+        ]))->assertSessionHasErrors('referrer_name');
     }
 
     public function test_no_active_year_blocks_input(): void
@@ -396,44 +406,50 @@ class ApplicantTest extends TestCase
         $this->actingAs($this->user)->get('/dashboard')->assertOk()->assertSee('Nomor terakhir dipakai')->assertSee('A-005');
     }
 
-    // ---------- penggabungan pembawa ----------
-
-    public function test_admin_can_merge_referrers_and_applicants_move_with_history(): void
+    public function test_referrer_name_and_class_are_saved_on_each_applicant_without_admin_master(): void
     {
-        $admin = User::factory()->admin()->create();
-        $duplicate = Referrer::create(['name' => 'Budi Santosa', 'name_key' => 'budi santosa']);
-        $a = $this->makeApplicant(1, ['referrer_id' => $duplicate->id]);
-        $b = $this->makeApplicant(2, ['referrer_id' => $this->referrer->id]);
-        $c = $this->makeApplicant(3, ['referrer_id' => $duplicate->id]);
-        $c->delete(); // data terhapus ikut dipindahkan
+        $payload = $this->payload([
+            'referrer_name' => '  Budi   Santoso ',
+            'referrer_class_name' => ' XI   IPA 1 ',
+        ]);
 
-        $this->actingAs($admin)->post("/referrers/{$duplicate->id}/merge", ['target_id' => $this->referrer->id])
-            ->assertRedirect('/referrers');
+        $this->actingAs($this->user)->post('/applicants', $payload)->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('referrers', ['id' => $duplicate->id]);
-        $this->assertSame($this->referrer->id, $a->fresh()->referrer_id);
-        $this->assertSame($this->referrer->id, Applicant::withTrashed()->find($c->id)->referrer_id);
-        $this->assertDatabaseHas('activity_logs', ['event' => 'referrer.merged']);
-        $this->assertDatabaseHas('activity_logs', ['event' => 'applicant.referrer_changed', 'subject_id' => $a->id]);
-        $this->assertDatabaseMissing('activity_logs', ['event' => 'applicant.referrer_changed', 'subject_id' => $b->id]);
+        $applicant = Applicant::firstOrFail();
+        $this->assertSame('Budi Santoso', $applicant->referrer_name);
+        $this->assertSame('XI IPA 1', $applicant->referrer_class_name);
+        $this->assertFalse(Schema::hasColumn('applicants', 'referrer_id'));
+        $this->assertFalse(Schema::hasTable('referrers'));
+        $this->actingAs(User::factory()->admin()->create())->get('/referrers')->assertNotFound();
     }
 
-    public function test_merge_into_self_or_by_non_admin_is_rejected(): void
+    public function test_existing_referrer_values_are_copied_to_applicants_by_the_migration(): void
     {
-        $admin = User::factory()->admin()->create();
+        $existing = $this->makeApplicant(1, [
+            'referrer_name' => 'Siti Aminah',
+            'referrer_class_name' => 'XII IPS 2',
+        ]);
+        $migration = require database_path('migrations/2026_11_04_000003_move_referrer_data_to_applicants_table.php');
+        $migration->down();
 
-        $this->actingAs($admin)->post("/referrers/{$this->referrer->id}/merge", ['target_id' => $this->referrer->id])
-            ->assertSessionHas('error');
-        $this->assertDatabaseHas('referrers', ['id' => $this->referrer->id]);
+        $this->assertNotNull($existing->fresh()->referrer_id);
+        $referrerId = DB::table('referrers')->insertGetId([
+            'name' => 'Budi Santoso',
+            'name_key' => 'budi santoso',
+            'class_name' => 'XI IPA 1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $applicant = $this->makeApplicant(2);
+        DB::table('applicants')->where('id', $applicant->id)->update(['referrer_id' => $referrerId]);
 
-        $this->actingAs($this->user)->post("/referrers/{$this->referrer->id}/merge", ['target_id' => 1])->assertForbidden();
-    }
+        $migration->up();
 
-    public function test_referrer_admin_page_shows_applicant_counts(): void
-    {
-        $this->makeApplicant(1, ['referrer_id' => $this->referrer->id]);
-        $this->makeApplicant(2, ['referrer_id' => $this->referrer->id]);
-
-        $this->actingAs(User::factory()->admin()->create())->get('/referrers')->assertOk()->assertSee('Gabungkan');
+        $this->assertSame('Budi Santoso', $applicant->fresh()->referrer_name);
+        $this->assertSame('XI IPA 1', $applicant->fresh()->referrer_class_name);
+        $this->assertSame('Siti Aminah', $existing->fresh()->referrer_name);
+        $this->assertSame('XII IPS 2', $existing->fresh()->referrer_class_name);
+        $this->assertFalse(Schema::hasColumn('applicants', 'referrer_id'));
+        $this->assertFalse(Schema::hasTable('referrers'));
     }
 }

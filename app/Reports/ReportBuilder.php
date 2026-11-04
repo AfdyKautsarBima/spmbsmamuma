@@ -8,7 +8,6 @@ use App\Models\ApplicantBilling;
 use App\Enums\DocumentStatus;
 use App\Enums\DocumentType;
 use App\Models\Payment;
-use App\Models\Referrer;
 use App\Models\UniformHandover;
 use App\Models\UniformType;
 use App\Models\User;
@@ -20,7 +19,7 @@ use InvalidArgumentException;
 
 /**
  * Menyusun isi semua laporan. Filter yang dikenal ($f):
- * from, to (yyyy-mm-dd), school_id, status, scope, referrer, kategori.
+ * from, to (yyyy-mm-dd), school_id, status, scope, referrer_name, referrer_class_name, kategori.
  */
 class ReportBuilder
 {
@@ -36,7 +35,10 @@ class ReportBuilder
 
     public function build(string $key, AcademicYear $year, array $f, User $user): Report
     {
-        $f += ['from' => null, 'to' => null, 'school_id' => null, 'status' => null, 'scope' => null, 'referrer' => null, 'kategori' => null];
+        $f += [
+            'from' => null, 'to' => null, 'school_id' => null, 'status' => null, 'scope' => null,
+            'referrer_name' => null, 'referrer_class_name' => null, 'kategori' => null,
+        ];
 
         return match ($key) {
             'pendaftar'          => $this->pendaftar($year, $f),
@@ -85,7 +87,7 @@ class ReportBuilder
 
     private function pendaftar(AcademicYear $year, array $f): Report
     {
-        $applicants = Applicant::with(['school', 'referrer'])
+        $applicants = Applicant::with('school')
             ->where('academic_year_id', $year->id)
             ->when($f['from'], fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
             ->when($f['to'], fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
@@ -103,14 +105,14 @@ class ReportBuilder
             $rows[] = [
                 $i + 1, $a->registration_number, $a->name, $a->gender, $a->birth_place, $a->birth_date->format('d/m/Y'),
                 $a->fullAddress(), $a->father_name, $a->mother_name, $a->phone ?? '', $a->nisn ?? '',
-                $a->school->name, $a->referrer?->name ?? '', $a->created_at->format('d/m/Y'),
+                $a->school->name, $a->referrer_name ?? '', $a->referrer_class_name ?? '', $a->created_at->format('d/m/Y'),
             ];
         }
 
         return (new Report('Daftar Pendaftar', $this->sub($year, $this->period($f['from'], $f['to'])), [$applicants->count().' pendaftar.']))
             ->section(null, array_map(fn ($l) => Report::col($l), [
                 'No', 'Nomor', 'Nama', 'L/P', 'Tempat lahir', 'Tanggal lahir', 'Alamat', 'Nama ayah', 'Nama ibu',
-                'No. HP', 'NISN', 'Asal sekolah', 'Pembawa', 'Tgl input',
+                'No. HP', 'NISN', 'Asal sekolah', 'Nama pembawa', 'Kelas pembawa', 'Tgl input',
             ]), $rows);
     }
 
@@ -538,35 +540,48 @@ class ReportBuilder
     {
         $applicants = Applicant::query()
             ->where('academic_year_id', $year->id)
-            ->whereNotNull('referrer_id')
-            ->selectRaw('applicants.id, applicants.referrer_id, applicants.withdrawn_at,
+            ->whereNotNull('referrer_name')
+            ->selectRaw('applicants.id, applicants.referrer_name, applicants.referrer_class_name, applicants.withdrawn_at,
                 (select coalesce(sum(p.amount), 0) from payments p where p.applicant_id = applicants.id and p.cancelled_at is null) as paid')
+            ->orderBy('applicants.id')
             ->get();
 
         $perReferrer = [];
         foreach ($applicants as $a) {
+            $key = json_encode([
+                mb_strtolower(trim($a->referrer_name)),
+                mb_strtolower(trim((string) $a->referrer_class_name)),
+            ], JSON_THROW_ON_ERROR);
             $cat = $this->rewardCategory($a->withdrawn_at !== null, (int) $a->paid);
-            $perReferrer[$a->referrer_id][$cat] = ($perReferrer[$a->referrer_id][$cat] ?? 0) + 1;
+            $perReferrer[$key]['name'] = $a->referrer_name;
+            $perReferrer[$key]['class_name'] = $a->referrer_class_name;
+            $perReferrer[$key][$cat] = ($perReferrer[$key][$cat] ?? 0) + 1;
         }
 
-        $names = Referrer::whereIn('id', array_keys($perReferrer))->pluck('name', 'id');
-        $link = fn (int $count, int $id, string $cat) => $count > 0
-            ? Report::link($count, route('reports.show', ['key' => 'reward-rincian', 'referrer' => $id, 'kategori' => $cat, 'year' => $year->id]), 'int')
+        $link = fn (int $count, array $referrer, string $cat) => $count > 0
+            ? Report::link($count, route('reports.show', [
+                'key' => 'reward-rincian',
+                'referrer_name' => $referrer['name'],
+                'referrer_class_name' => $referrer['class_name'],
+                'kategori' => $cat,
+                'year' => $year->id,
+            ]), 'int')
             : 0;
 
         $lines = [];
-        foreach ($perReferrer as $id => $c) {
-            $lines[] = ['id' => $id, 'name' => $names[$id] ?? '-', 'reward' => $c['reward'] ?? 0, 'belum' => $c['belum'] ?? 0, 'mundur' => $c['mundur'] ?? 0];
+        foreach ($perReferrer as $c) {
+            $lines[] = $c + ['reward' => 0, 'belum' => 0, 'mundur' => 0];
         }
-        usort($lines, fn ($a, $b) => [$b['reward'], $a['name']] <=> [$a['reward'], $b['name']]);
+        usort($lines, fn ($a, $b) => [$b['reward'], $a['name'], $a['class_name']] <=> [$a['reward'], $b['name'], $b['class_name']]);
 
         $rows = [];
         $sum = ['all' => 0, 'reward' => 0, 'belum' => 0, 'mundur' => 0];
         foreach ($lines as $i => $l) {
             $all = $l['reward'] + $l['belum'] + $l['mundur'];
+            $referrer = ['name' => $l['name'], 'class_name' => $l['class_name']];
             $rows[] = [
-                $i + 1, $l['name'], $link($all, $l['id'], 'semua'), $link($l['reward'], $l['id'], 'reward'),
-                $link($l['belum'], $l['id'], 'belum'), $link($l['mundur'], $l['id'], 'mundur'),
+                $i + 1, $l['name'], $l['class_name'] ?? '', $link($all, $referrer, 'semua'), $link($l['reward'], $referrer, 'reward'),
+                $link($l['belum'], $referrer, 'belum'), $link($l['mundur'], $referrer, 'mundur'),
             ];
             $sum['all'] += $all;
             $sum['reward'] += $l['reward'];
@@ -574,26 +589,32 @@ class ReportBuilder
             $sum['mundur'] += $l['mundur'];
         }
 
-        $withoutReferrer = Applicant::where('academic_year_id', $year->id)->whereNull('referrer_id')->count();
+        $withoutReferrer = Applicant::where('academic_year_id', $year->id)->whereNull('referrer_name')->count();
 
         return (new Report('Rekap Reward Pembawa', $this->sub($year), [
             'Dihitung reward: murid yang sudah membayar (menyicil atau lunas) dan tidak mengundurkan diri.',
             'Murid yang mengundurkan diri membatalkan reward. Nominal reward dan status pembayarannya diurus di luar sistem.',
             $withoutReferrer.' pendaftar tidak memiliki pembawa dan tidak termasuk rekap ini.',
         ]))->section(null, [
-            Report::col('No'), Report::col('Pembawa'), Report::col('Total dibawa', 'int'), Report::col('Dihitung reward', 'int'),
+            Report::col('No'), Report::col('Nama pembawa'), Report::col('Kelas'), Report::col('Total dibawa', 'int'), Report::col('Dihitung reward', 'int'),
             Report::col('Belum bayar', 'int'), Report::col('Mundur (batal)', 'int'),
-        ], $rows, ['Total', '', Report::num($sum['all']), Report::num($sum['reward']), Report::num($sum['belum']), Report::num($sum['mundur'])]);
+        ], $rows, ['Total', '', '', Report::num($sum['all']), Report::num($sum['reward']), Report::num($sum['belum']), Report::num($sum['mundur'])]);
     }
 
     private function rewardRincian(AcademicYear $year, array $f): Report
     {
-        $referrer = Referrer::findOrFail($f['referrer']);
         $cat = in_array($f['kategori'], ['reward', 'belum', 'mundur'], true) ? $f['kategori'] : 'semua';
         $label = ['semua' => 'Semua murid', 'reward' => 'Dihitung reward', 'belum' => 'Belum bayar', 'mundur' => 'Mundur (reward batal)'][$cat];
 
         $applicants = Applicant::with(['school', 'billing', 'payments' => $this->validPayments()])
-            ->where('academic_year_id', $year->id)->where('referrer_id', $referrer->id)->orderBy('registration_seq')->get();
+            ->where('academic_year_id', $year->id)
+            ->whereRaw('LOWER(referrer_name) = ?', [mb_strtolower($f['referrer_name'])])
+            ->when(
+                $f['referrer_class_name'] === null || $f['referrer_class_name'] === '',
+                fn ($q) => $q->where(fn ($query) => $query->whereNull('referrer_class_name')->orWhere('referrer_class_name', '')),
+                fn ($q) => $q->whereRaw('LOWER(referrer_class_name) = ?', [mb_strtolower($f['referrer_class_name'])]),
+            )
+            ->orderBy('registration_seq')->get();
 
         $rows = [];
         foreach ($applicants as $a) {
@@ -604,7 +625,9 @@ class ReportBuilder
             $rows[] = [count($rows) + 1, $a->registration_number, $a->name, $a->school->name, $s['status']->label(), $s['paid'] ?: ''];
         }
 
-        return (new Report('Rincian Pembawa: '.$referrer->name, $this->sub($year, $label), [count($rows).' murid.']))
+        $title = 'Rincian Pembawa: '.$f['referrer_name'].($f['referrer_class_name'] ? ' ('.$f['referrer_class_name'].')' : '');
+
+        return (new Report($title, $this->sub($year, $label), [count($rows).' murid.']))
             ->section(null, [
                 Report::col('No'), Report::col('Nomor'), Report::col('Nama'), Report::col('Asal sekolah'), Report::col('Status'), Report::col('Dibayar', 'rp'),
             ], $rows);

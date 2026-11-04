@@ -96,7 +96,8 @@ class ApplicantRequest extends FormRequest
                     $q->orWhere('id', $currentSchool);
                 }
             })],
-            'referrer_id'   => ['nullable', 'integer', 'exists:referrers,id'],
+            'referrer_name' => ['nullable', 'required_with:referrer_class_name', 'string', 'max:100'],
+            'referrer_class_name' => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -144,7 +145,8 @@ class ApplicantRequest extends FormRequest
             'mother_name'         => 'nama ibu',
             'phone'               => 'nomor HP',
             'school_id'           => 'asal sekolah',
-            'referrer_id'         => 'pembawa',
+            'referrer_name'       => 'nama pembawa',
+            'referrer_class_name' => 'kelas pembawa',
         ];
     }
 
@@ -192,7 +194,8 @@ class ApplicantRequest extends FormRequest
             'mother_name'         => $v['mother_name'],
             'phone'               => $v['phone'] ?? null,
             'school_id'           => (int) $v['school_id'],
-            'referrer_id'         => isset($v['referrer_id']) ? (int) $v['referrer_id'] : null,
+            'referrer_name'       => isset($v['referrer_name']) ? trim(preg_replace('/\s+/u', ' ', $v['referrer_name'])) ?: null : null,
+            'referrer_class_name' => isset($v['referrer_class_name']) ? trim(preg_replace('/\s+/u', ' ', $v['referrer_class_name'])) ?: null : null,
             'person_key'          => Applicant::personKey($v['name'], $v['birth_date'], $v['mother_name']),
         ];
     }

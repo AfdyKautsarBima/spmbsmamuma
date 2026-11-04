@@ -157,14 +157,26 @@
                 @error('school_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium">Pembawa (opsional)</label>
+                <label for="referrer_name" class="mb-1 block text-sm font-medium">Nama pembawa (opsional)</label>
                 @if ($applicant->exists && $applicant->referrerLocked() && ! auth()->user()->isAdmin())
-                    <p class="rounded border bg-slate-50 px-3 py-2 text-sm">{{ $applicant->referrer?->name ?? '-' }} (terkunci, hubungi admin untuk mengubah)</p>
-                    <input type="hidden" name="referrer_id" value="{{ $applicant->referrer_id }}">
+                    <p class="rounded border bg-slate-50 px-3 py-2 text-sm">
+                        {{ $applicant->referrer_name ?: '-' }}{{ $applicant->referrer_class_name ? ' ('.$applicant->referrer_class_name.')' : '' }}
+                        (terkunci, hubungi admin untuk mengubah)
+                    </p>
+                    <input type="hidden" name="referrer_name" value="{{ $applicant->referrer_name }}">
+                    <input type="hidden" name="referrer_class_name" value="{{ $applicant->referrer_class_name }}">
                 @else
-                    <x-referrer-picker :selected="$applicant->referrer" />
+                    <input id="referrer_name" name="referrer_name" maxlength="100"
+                           value="{{ old('referrer_name', $applicant->referrer_name) }}" placeholder="Nama pembawa atau kode referral"
+                           class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    <label for="referrer_class_name" class="mb-1 mt-3 block text-sm font-medium">Kelas pembawa (opsional)</label>
+                    <input id="referrer_class_name" name="referrer_class_name" maxlength="50"
+                           value="{{ old('referrer_class_name', $applicant->referrer_class_name) }}" placeholder="Kelas pembawa"
+                           class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    <p class="mt-1 text-xs text-slate-500">Data pembawa dicatat langsung pada pendaftar ini.</p>
                 @endif
-                @error('referrer_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                @error('referrer_name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                @error('referrer_class_name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
         </section>
 

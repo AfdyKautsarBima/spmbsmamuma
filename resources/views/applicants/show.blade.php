@@ -46,7 +46,8 @@
                     'Nama ibu' => $applicant->mother_name,
                     'Nomor HP' => $applicant->phone ?? '-',
                     'Asal sekolah' => $applicant->school->name.' ('.$applicant->school->regency_name.')',
-                    'Pembawa' => $applicant->referrer?->name ?? '-',
+                    'Nama pembawa' => $applicant->referrer_name ?? '-',
+                    'Kelas pembawa' => $applicant->referrer_class_name ?? '-',
                     'Diinput oleh' => $applicant->creator->name.', '.$applicant->created_at->format('d/m/Y H:i'),
                 ] as $label => $value)
                     <div><dt class="text-slate-500">{{ $label }}</dt><dd class="font-medium">{{ $value }}</dd></div>

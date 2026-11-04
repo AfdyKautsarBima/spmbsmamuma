@@ -11,7 +11,6 @@ use App\Models\ApplicantDocument;
 use App\Models\ApplicantFamilyDetail;
 use App\Models\DiscountPeriod;
 use App\Models\Payment;
-use App\Models\Referrer;
 use App\Models\School;
 use App\Models\UniformSize;
 use App\Models\UniformType;
@@ -38,8 +37,8 @@ class ReportTest extends TestCase
     private User $reg;
     private User $clerk;
     private User $staff;
-    private Referrer $refX;
-    private Referrer $refY;
+    private string $refX;
+    private string $refY;
 
     protected function setUp(): void
     {
@@ -54,8 +53,8 @@ class ReportTest extends TestCase
         $this->reg = User::factory()->create();
         $this->clerk = User::factory()->role(Role::DaftarUlang)->create();
         $this->staff = User::factory()->role(Role::Seragam)->create();
-        $this->refX = Referrer::create(['name' => 'Budi Santoso', 'name_key' => 'budi santoso']);
-        $this->refY = Referrer::create(['name' => 'Siti Aminah', 'name_key' => 'siti aminah']);
+        $this->refX = 'Budi Santoso';
+        $this->refY = 'Siti Aminah';
     }
 
     protected function tearDown(): void
@@ -114,12 +113,12 @@ class ReportTest extends TestCase
     /** Skenario daftar ulang: A menyicil, B lunas, C belum bayar, D mundur setelah bayar, E mundur belum bayar. */
     private function enrollmentScenario(): array
     {
-        $a = $this->applicant(1, ['name' => 'Murid A', 'referrer_id' => $this->refX->id]);
-        $b = $this->applicant(2, ['name' => 'Murid B', 'referrer_id' => $this->refX->id]);
-        $c = $this->applicant(3, ['name' => 'Murid C', 'referrer_id' => $this->refX->id]);
-        $d = $this->applicant(4, ['name' => 'Murid D', 'referrer_id' => $this->refX->id]);
-        $e = $this->applicant(5, ['name' => 'Murid E', 'referrer_id' => $this->refX->id]);
-        $f = $this->applicant(6, ['name' => 'Murid F', 'referrer_id' => $this->refY->id]);
+        $a = $this->applicant(1, ['name' => 'Murid A', 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
+        $b = $this->applicant(2, ['name' => 'Murid B', 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
+        $c = $this->applicant(3, ['name' => 'Murid C', 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
+        $d = $this->applicant(4, ['name' => 'Murid D', 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
+        $e = $this->applicant(5, ['name' => 'Murid E', 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
+        $f = $this->applicant(6, ['name' => 'Murid F', 'referrer_name' => $this->refY, 'referrer_class_name' => 'XI B']);
         $g = $this->applicant(7, ['name' => 'Murid G']);
 
         $this->pay($a, 500000);
@@ -187,7 +186,7 @@ class ReportTest extends TestCase
 
         $this->actingAs($this->admin)->get('/laporan/tidak-ada')->assertNotFound();
         $this->actingAs($this->admin)->get('/laporan/reward-rincian')->assertNotFound(); // tanpa pembawa
-        $this->actingAs($this->reg)->get("/laporan/reward-rincian?referrer={$this->refX->id}")->assertForbidden();
+        $this->actingAs($this->reg)->get('/laporan/reward-rincian?referrer_name=Budi')->assertForbidden();
         $this->actingAs($this->reg)->get('/laporan/siswa-yatim?format=xlsx')->assertForbidden();
         $this->actingAs($this->reg)->get('/laporan/siswa-berprestasi?format=xlsx')->assertForbidden();
     }
@@ -216,12 +215,13 @@ class ReportTest extends TestCase
     public function test_applicant_list_report_and_filters(): void
     {
         $a = $this->applicant(1, ['name' => 'Murid A']);
-        $b = $this->applicant(2, ['name' => 'Murid B', 'school_id' => $this->school2->id, 'referrer_id' => $this->refX->id]);
+        $b = $this->applicant(2, ['name' => 'Murid B', 'school_id' => $this->school2->id, 'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
         \Illuminate\Support\Facades\DB::table('applicants')->where('id', $a->id)->update(['created_at' => '2026-12-04 09:00:00']);
 
         $all = $this->build('pendaftar');
         $this->assertSame(['Murid A', 'Murid B'], $this->names($all, 2));
         $this->assertSame('Budi Santoso', $this->rows($all)[1][12]);
+        $this->assertSame('XI A', $this->rows($all)[1][13]);
         $this->assertSame('25/12/2010', $this->rows($all)[0][5]);
 
         $this->assertSame(['Murid B'], $this->names($this->build('pendaftar', ['school_id' => $this->school2->id]), 2));
@@ -514,21 +514,45 @@ class ReportTest extends TestCase
         $report = $this->build('reward');
         $rows = $this->rows($report);
 
-        // [No, Pembawa, Total, Dihitung reward, Belum bayar, Mundur]
-        $this->assertSame([1, 'Budi Santoso', 5, 2, 1, 2], $rows[0]);
-        $this->assertSame([2, 'Siti Aminah', 1, 1, 0, 0], $rows[1]);
-        $this->assertSame(['Total', '', 6, 3, 1, 2], $this->footer($report));
+        // [No, Nama pembawa, Kelas, Total, Dihitung reward, Belum bayar, Mundur]
+        $this->assertSame([1, 'Budi Santoso', 'XI A', 5, 2, 1, 2], $rows[0]);
+        $this->assertSame([2, 'Siti Aminah', 'XI B', 1, 1, 0, 0], $rows[1]);
+        $this->assertSame(['Total', '', '', 6, 3, 1, 2], $this->footer($report));
         $this->assertStringContainsString('1 pendaftar tidak memiliki pembawa', implode(' ', $report->notes));
     }
 
     public function test_reward_follows_valid_payments_when_a_payment_is_cancelled(): void
     {
-        $a = $this->applicant(1, ['referrer_id' => $this->refX->id]);
+        $a = $this->applicant(1, ['referrer_name' => $this->refX, 'referrer_class_name' => 'XI A']);
         $payment = $this->pay($a, 100000);
-        $this->assertSame([1, 'Budi Santoso', 1, 1, 0, 0], $this->rows($this->build('reward'))[0]);
+        $this->assertSame([1, 'Budi Santoso', 'XI A', 1, 1, 0, 0], $this->rows($this->build('reward'))[0]);
 
         app(EnrollmentService::class)->cancelPayment($payment, 'salah input', $this->admin);
-        $this->assertSame([1, 'Budi Santoso', 1, 0, 1, 0], $this->rows($this->build('reward'))[0]);
+        $this->assertSame([1, 'Budi Santoso', 'XI A', 1, 0, 1, 0], $this->rows($this->build('reward'))[0]);
+    }
+
+    public function test_reward_groups_applicant_referrer_values_by_name_and_class(): void
+    {
+        $this->applicant(1, ['referrer_name' => 'Budi Santoso', 'referrer_class_name' => 'XI A']);
+        $this->applicant(2, ['referrer_name' => 'BUDI SANTOSO', 'referrer_class_name' => 'xi a']);
+        $this->applicant(3, ['referrer_name' => 'Budi Santoso', 'referrer_class_name' => 'XI B']);
+
+        $rows = $this->rows($this->build('reward'));
+
+        $this->assertCount(2, $rows);
+        $this->assertSame('budi santoso', mb_strtolower($rows[0][1]));
+        $this->assertSame('xi a', mb_strtolower($rows[0][2]));
+        $this->assertSame(2, $rows[0][3]);
+        $this->assertSame('budi santoso', mb_strtolower($rows[1][1]));
+        $this->assertSame('xi b', mb_strtolower($rows[1][2]));
+        $this->assertSame(1, $rows[1][3]);
+
+        $detail = $this->build('reward-rincian', [
+            'referrer_name' => 'Budi Santoso',
+            'referrer_class_name' => 'XI A',
+            'kategori' => 'semua',
+        ]);
+        $this->assertSame(['Murid 1', 'Murid 2'], $this->names($detail, 2));
     }
 
     public function test_reward_detail_pages_and_links(): void
@@ -536,16 +560,18 @@ class ReportTest extends TestCase
         $this->enrollmentScenario();
 
         $this->actingAs($this->admin)->get('/laporan/reward')->assertOk()
-            ->assertSee("kategori=reward", false)->assertSee("referrer={$this->refX->id}", false);
+            ->assertSee('kategori=reward', false)->assertSee('referrer_name=Budi', false)->assertSee('referrer_class_name=XI', false);
 
-        $detail = fn (string $kategori) => $this->names($this->build('reward-rincian', ['referrer' => $this->refX->id, 'kategori' => $kategori]), 2);
+        $detail = fn (string $kategori) => $this->names($this->build('reward-rincian', [
+            'referrer_name' => $this->refX, 'referrer_class_name' => 'XI A', 'kategori' => $kategori,
+        ]), 2);
         $this->assertSame(['Murid A', 'Murid B'], $detail('reward'));
         $this->assertSame(['Murid C'], $detail('belum'));
         $this->assertSame(['Murid D', 'Murid E'], $detail('mundur'));
         $this->assertCount(5, $detail('semua'));
 
-        $this->actingAs($this->admin)->get("/laporan/reward-rincian?referrer={$this->refX->id}&kategori=mundur")
-            ->assertOk()->assertSee('Rincian Pembawa: Budi Santoso')->assertSee('Murid D')->assertDontSee('Murid A');
+        $this->actingAs($this->admin)->get('/laporan/reward-rincian?referrer_name=Budi%20Santoso&referrer_class_name=XI%20A&kategori=mundur')
+            ->assertOk()->assertSee('Rincian Pembawa: Budi Santoso (XI A)')->assertSee('Murid D')->assertDontSee('Murid A');
     }
 
     // ---------- seragam ----------

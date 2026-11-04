@@ -9,7 +9,6 @@ use App\Models\Applicant;
 use App\Models\ApplicantBilling;
 use App\Models\DiscountPeriod;
 use App\Models\Payment;
-use App\Models\Referrer;
 use App\Models\Region;
 use App\Models\School;
 use App\Models\User;
@@ -441,30 +440,31 @@ class EnrollmentTest extends TestCase
         foreach ([['33', 'JAWA TENGAH', 1, null], ['33.19', 'KAB. KUDUS', 2, '33'], ['33.19.01', 'KALIWUNGU', 3, '33.19'], ['33.19.01.2001', 'BAKALAN', 4, '33.19.01']] as [$c, $n, $l, $p]) {
             Region::create(['code' => $c, 'name' => $n, 'level' => $l, 'parent_code' => $p]);
         }
-        $one = Referrer::create(['name' => 'Budi Satu', 'name_key' => 'budi satu']);
-        $two = Referrer::create(['name' => 'Siti Dua', 'name_key' => 'siti dua']);
-        $a = $this->applicant(1, ['referrer_id' => $one->id]);
+        $one = ['referrer_name' => 'Budi Satu', 'referrer_class_name' => 'XI A'];
+        $two = ['referrer_name' => 'Siti Dua', 'referrer_class_name' => 'XI B'];
+        $a = $this->applicant(1, $one);
 
-        $payload = fn (int $referrerId) => [
+        $payload = fn (array $referrer) => [
             'registration_number' => 'A-001', 'name' => 'Murid 1', 'gender' => 'P', 'birth_place' => 'Kudus', 'birth_date' => '2010-01-01',
             'province_code' => '33', 'regency_code' => '33.19', 'district_code' => '33.19.01', 'village_code' => '33.19.01.2001',
             'rt' => '1', 'rw' => '1', 'father_name' => 'Ayah 1', 'mother_name' => 'Ibu 1',
-            'school_id' => $this->school->id, 'referrer_id' => $referrerId,
-        ];
+            'school_id' => $this->school->id,
+        ] + $referrer;
 
         // belum ada pembayaran: boleh diubah
-        $this->actingAs($this->reg)->put("/applicants/{$a->id}", $payload($two->id))->assertSessionHasNoErrors();
-        $this->assertSame($two->id, $a->fresh()->referrer_id);
+        $this->actingAs($this->reg)->put("/applicants/{$a->id}", $payload($two))->assertSessionHasNoErrors();
+        $this->assertSame($two['referrer_name'], $a->fresh()->referrer_name);
+        $this->assertSame($two['referrer_class_name'], $a->fresh()->referrer_class_name);
         $this->assertFalse($a->fresh()->referrerLocked());
 
         $this->pay($a, 100000);
         $this->assertTrue($a->fresh()->referrerLocked());
 
-        $this->actingAs($this->reg)->put("/applicants/{$a->id}", $payload($one->id))->assertSessionHasErrors('referrer_id');
-        $this->assertSame($two->id, $a->fresh()->referrer_id);
+        $this->actingAs($this->reg)->put("/applicants/{$a->id}", $payload($one))->assertSessionHasErrors('referrer_name');
+        $this->assertSame($two['referrer_name'], $a->fresh()->referrer_name);
 
-        $this->actingAs($this->admin)->put("/applicants/{$a->id}", $payload($one->id))->assertSessionHasNoErrors();
-        $this->assertSame($one->id, $a->fresh()->referrer_id);
+        $this->actingAs($this->admin)->put("/applicants/{$a->id}", $payload($one))->assertSessionHasNoErrors();
+        $this->assertSame($one['referrer_name'], $a->fresh()->referrer_name);
 
         // pembayaran dibatalkan: kunci terlepas
         $this->actingAs($this->admin)->post('/pembayaran/'.Payment::first()->id.'/batal', ['reason' => 'salah']);
@@ -554,8 +554,46 @@ class EnrollmentTest extends TestCase
         $this->pay($a, 500000);
 
         $this->actingAs($this->clerk)->get('/dashboard')->assertOk()->assertSee('Uang masuk hari ini')->assertSee('Rp 500.000');
-        $this->actingAs($this->admin)->get('/dashboard')->assertOk()->assertSee('Tagihan bersih')->assertSee('Total diterima');
-        $this->actingAs($this->reg)->get('/dashboard')->assertOk()->assertDontSee('Uang masuk hari ini');
+        $this->actingAs($this->admin)->get('/dashboard')->assertOk()->assertSee('Tagihan bersih')->assertSee('Total diterima')
+            ->assertSee('Status pendaftar')->assertSee('Jumlah pendaftar per asal sekolah')
+            ->assertSee('Pendaftar')->assertSee('Daftar ulang')->assertSee('Cabut')
+            ->assertSee('Diagram status pendaftar', false);
+        $this->actingAs($this->reg)->get('/dashboard')->assertOk()->assertDontSee('Uang masuk hari ini')
+            ->assertDontSee('Jumlah pendaftar per asal sekolah');
+    }
+
+    public function test_admin_dashboard_charts_show_registration_enrollment_withdrawal_and_school_counts(): void
+    {
+        $registered = $this->applicant(1, ['name' => 'Terdaftar']);
+        $installment = $this->applicant(2, ['name' => 'Menyicil']);
+        $paid = $this->applicant(3, ['name' => 'Lunas']);
+        $withdrawn = $this->applicant(4, ['name' => 'Cabut']);
+        $school2 = School::create(['name' => 'SMP 2', 'regency_code' => '33.20', 'regency_name' => 'KAB. JEPARA']);
+        $withdrawn->update(['school_id' => $school2->id]);
+        $this->pay($installment, 500000);
+        $this->pay($paid, 1500000);
+        $this->pay($withdrawn, 500000);
+        $this->actingAs($this->admin)->post("/daftar-ulang/{$withdrawn->id}/mundur", ['date' => '2026-12-05', 'reason' => 'Pindah']);
+
+        $response = $this->actingAs($this->admin)->get('/dashboard');
+        $response->assertOk()
+            ->assertSee('SMP 1')->assertSee('SMP 2')
+            ->assertSee('aria-label="Diagram status pendaftar, total 4"', false);
+        $this->assertSame([
+            ['label' => 'Pendaftar', 'count' => 1, 'color' => '#64748b'],
+            ['label' => 'Daftar ulang', 'count' => 2, 'color' => '#16a34a'],
+            ['label' => 'Cabut', 'count' => 1, 'color' => '#dc2626'],
+        ], $response->viewData('charts')['status']);
+        $this->assertSame([
+            ['name' => 'SMP 1', 'count' => 3],
+            ['name' => 'SMP 2', 'count' => 1],
+        ], $response->viewData('charts')['schools']);
+
+        $response = $this->actingAs($this->reg)->get('/dashboard');
+        $response->assertOk()
+            ->assertDontSee('Diagram status pendaftar', false)
+            ->assertDontSee('Jumlah pendaftar per asal sekolah');
+        $this->assertNull($response->viewData('charts'));
     }
 
     public function test_stats_service(): void

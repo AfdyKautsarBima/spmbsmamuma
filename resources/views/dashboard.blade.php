@@ -45,6 +45,64 @@
                 </ul>
             </div>
         @endif
+
+        @if (auth()->user()->isAdmin() && $charts)
+            @php($pieTotal = array_sum(array_column($charts['status'], 'count')))
+            @php($maxSchoolCount = max(array_column($charts['schools'], 'count') ?: [0]))
+            <section class="mt-4 grid gap-4 lg:grid-cols-2" aria-label="Grafik statistik pendaftar">
+                <div class="rounded-lg bg-white p-4 shadow-sm">
+                    <h2 class="mb-1 text-sm font-medium text-slate-500">Status pendaftar</h2>
+                    <p class="mb-4 text-xs text-slate-400">Tahun ajaran {{ $year->name }}</p>
+                    <div class="flex flex-wrap items-center justify-center gap-6">
+                        <div class="relative h-44 w-44 shrink-0" role="img" aria-label="Diagram status pendaftar, total {{ $pieTotal }}">
+                            <svg viewBox="0 0 42 42" class="h-full w-full -rotate-90">
+                                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#e2e8f0" stroke-width="8" />
+                                @php($offset = 0)
+                                @foreach ($charts['status'] as $slice)
+                                    @if ($pieTotal > 0 && $slice['count'] > 0)
+                                        @php($percent = $slice['count'] / $pieTotal * 100)
+                                        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="{{ $slice['color'] }}" stroke-width="8"
+                                                stroke-dasharray="{{ $percent }} {{ 100 - $percent }}" stroke-dashoffset="{{ -$offset }}" />
+                                        @php($offset += $percent)
+                                    @endif
+                                @endforeach
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-2xl font-semibold">{{ $pieTotal }}</span>
+                                <span class="text-xs text-slate-500">siswa</span>
+                            </div>
+                        </div>
+                        <ul class="space-y-3 text-sm">
+                            @foreach ($charts['status'] as $slice)
+                                <li class="flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-sm" style="background-color: {{ $slice['color'] }}"></span>
+                                    <span>{{ $slice['label'] }}</span>
+                                    <span class="font-semibold">{{ $slice['count'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="rounded-lg bg-white p-4 shadow-sm">
+                    <h2 class="mb-1 text-sm font-medium text-slate-500">Jumlah pendaftar per asal sekolah</h2>
+                    <p class="mb-4 text-xs text-slate-400">Tahun ajaran {{ $year->name }}</p>
+                    @forelse ($charts['schools'] as $school)
+                        <div class="mb-3 grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-3 text-sm">
+                            <div class="min-w-0">
+                                <div class="mb-1 truncate" title="{{ $school['name'] }}">{{ $school['name'] }}</div>
+                                <div class="h-3 overflow-hidden rounded-full bg-slate-100">
+                                    <div class="h-full rounded-full bg-blue-600" style="width: {{ $maxSchoolCount ? $school['count'] / $maxSchoolCount * 100 : 0 }}%"></div>
+                                </div>
+                            </div>
+                            <span class="text-right font-semibold">{{ $school['count'] }}</span>
+                        </div>
+                    @empty
+                        <p class="py-8 text-center text-sm text-slate-500">Belum ada data pendaftar.</p>
+                    @endforelse
+                </div>
+            </section>
+        @endif
     </div>
 
     @if ($enrollment)

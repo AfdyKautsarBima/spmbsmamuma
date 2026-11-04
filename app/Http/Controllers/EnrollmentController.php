@@ -41,7 +41,7 @@ class EnrollmentController extends Controller
 
     public function show(Applicant $applicant): View
     {
-        $applicant->load(['school', 'referrer', 'billing', 'academicYear', 'documents', 'familyDetail']);
+        $applicant->load(['school', 'billing', 'academicYear', 'documents', 'familyDetail']);
         $payments = $applicant->payments()->with(['receiver', 'canceller'])->orderBy('id')->get();
         $applicant->setRelation('payments', $payments);
 

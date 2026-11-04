@@ -63,7 +63,10 @@
                         <td class="px-4 py-3">{{ $a->name }}</td>
                         <td class="px-4 py-3">{{ $a->gender }}</td>
                         <td class="px-4 py-3">{{ $a->school->name }}</td>
-                        <td class="px-4 py-3">{{ $a->referrer?->name ?? '-' }}</td>
+                        <td class="px-4 py-3">
+                            {{ $a->referrer_name ?? '-' }}
+                            @if ($a->referrer_class_name)<span class="text-slate-500">({{ $a->referrer_class_name }})</span>@endif
+                        </td>
                         <td class="px-4 py-3">{{ $a->village_name }} / {{ $a->district_name }}</td>
                         <td class="px-4 py-3">
                             <span class="rounded px-2 py-1 text-xs {{ $a->documents_complete ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">{{ $a->documents_complete ? 'Lengkap' : 'Belum lengkap' }}</span>

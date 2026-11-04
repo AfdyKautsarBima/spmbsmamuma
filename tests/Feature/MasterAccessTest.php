@@ -15,7 +15,7 @@ class MasterAccessTest extends TestCase
     {
         $this->actingAs(User::factory()->admin()->create());
 
-        foreach (['/master', '/master/wilayah', '/schools', '/schools/create', '/referrers', '/occupations', '/occupations/create'] as $url) {
+        foreach (['/master', '/master/wilayah', '/schools', '/schools/create', '/occupations', '/occupations/create'] as $url) {
             $this->get($url)->assertOk();
         }
     }

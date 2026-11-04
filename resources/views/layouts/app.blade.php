@@ -35,7 +35,7 @@
             @endif
             @if ($me->isAdmin())
                 {!! $link('academic-years.index', 'Tahun Ajaran', 'academic-years.*') !!}
-                {!! $link('master.index', 'Master Data', ['master.*', 'schools.*', 'referrers.*', 'occupations.*', 'regions.*', 'discount-periods.*', 'uniform-types.*', 'uniform-sizes.*']) !!}
+                {!! $link('master.index', 'Master Data', ['master.*', 'schools.*', 'occupations.*', 'regions.*', 'discount-periods.*', 'uniform-types.*', 'uniform-sizes.*']) !!}
                 {!! $link('users.index', 'Akun', 'users.*') !!}
                 {!! $link('whatsapp-template.edit', 'Template WA', 'whatsapp-template.*') !!}
                 {!! $link('activity-logs.index', 'Log Aktivitas', 'activity-logs.*') !!}

@@ -49,7 +49,7 @@
             <h2 class="mb-3 text-sm font-medium text-slate-500">Murid</h2>
             <dl class="space-y-2 text-sm">
                 <div><dt class="text-slate-500">Asal sekolah</dt><dd class="font-medium">{{ $applicant->school->name }}</dd></div>
-                <div><dt class="text-slate-500">Pembawa</dt><dd class="font-medium">{{ $applicant->referrer?->name ?? '-' }}</dd></div>
+                <div><dt class="text-slate-500">Pembawa</dt><dd class="font-medium">{{ $applicant->referrer_name ?? '-' }}{{ $applicant->referrer_class_name ? ' ('.$applicant->referrer_class_name.')' : '' }}</dd></div>
                 <div>
                     <dt class="text-slate-500">Status berkas (informasi)</dt>
                     <dd class="font-medium {{ $missing ? 'text-amber-700' : 'text-green-700' }}">

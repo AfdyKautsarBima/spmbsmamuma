@@ -1,7 +1,6 @@
 @php
     $tabs = [
         ['schools.index', 'Asal Sekolah', 'schools.*'],
-        ['referrers.index', 'Pembawa', 'referrers.*'],
         ['occupations.index', 'Pekerjaan', 'occupations.*'],
         ['regions.index', 'Wilayah', 'regions.*'],
         ['discount-periods.index', 'Diskon', 'discount-periods.*'],

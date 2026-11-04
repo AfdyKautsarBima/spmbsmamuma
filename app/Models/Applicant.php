@@ -19,7 +19,7 @@ class Applicant extends Model
         'province_code', 'province_name', 'regency_code', 'regency_name',
         'district_code', 'district_name', 'village_code', 'village_name', 'rt', 'rw',
         'father_name', 'mother_name', 'phone',
-        'school_id', 'referrer_id', 'person_key', 'created_by',
+        'school_id', 'referrer_name', 'referrer_class_name', 'person_key', 'created_by',
         'nisn', 'documents_complete',
         'withdrawn_at', 'withdrawn_reason', 'withdrawn_by', 'refund_note',
     ];
@@ -37,11 +37,6 @@ class Applicant extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
-    }
-
-    public function referrer(): BelongsTo
-    {
-        return $this->belongsTo(Referrer::class);
     }
 
     public function creator(): BelongsTo
