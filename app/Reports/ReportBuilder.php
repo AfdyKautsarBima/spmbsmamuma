@@ -5,6 +5,8 @@ namespace App\Reports;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
 use App\Models\ApplicantBilling;
+use App\Enums\DocumentStatus;
+use App\Enums\DocumentType;
 use App\Models\Payment;
 use App\Models\Referrer;
 use App\Models\UniformHandover;
@@ -39,6 +41,7 @@ class ReportBuilder
         return match ($key) {
             'pendaftar'          => $this->pendaftar($year, $f),
             'berkas-kurang'      => $this->berkasKurang($year),
+            'siswa-yatim'        => $this->siswaYatim($year),
             'daftar-ulang'       => $this->daftarUlang($year, $f),
             'pembayaran-harian'  => $this->pembayaranHarian($year, $f),
             'tunggakan'          => $this->tunggakan($year),
@@ -120,6 +123,45 @@ class ReportBuilder
 
         return (new Report('Daftar Berkas Kurang', $this->sub($year), [count($rows).' pendaftar berkasnya belum lengkap.']))
             ->section(null, array_map(fn ($l) => Report::col($l), ['No', 'Nomor', 'Nama', 'Asal sekolah', 'No. HP', 'Berkas yang kurang']), $rows);
+    }
+
+    private function siswaYatim(AcademicYear $year): Report
+    {
+        $parentDocumentTypes = [DocumentType::KtpAyah->value, DocumentType::KtpIbu->value];
+        $applicants = Applicant::with(['school', 'documents' => fn ($q) => $q->whereIn('type', $parentDocumentTypes)])
+            ->where('academic_year_id', $year->id)
+            ->whereHas('documents', fn ($q) => $q
+                ->whereIn('type', $parentDocumentTypes)
+                ->where('status', DocumentStatus::TidakAda->value))
+            ->orderBy('registration_seq')
+            ->get();
+
+        $rows = [];
+        foreach ($applicants as $i => $applicant) {
+            $statuses = $applicant->documents->keyBy(fn ($document) => $document->type->value);
+            $fatherStatus = $statuses->get(DocumentType::KtpAyah->value)?->status ?? DocumentStatus::Belum;
+            $motherStatus = $statuses->get(DocumentType::KtpIbu->value)?->status ?? DocumentStatus::Belum;
+            $fatherAbsent = $fatherStatus === DocumentStatus::TidakAda;
+            $motherAbsent = $motherStatus === DocumentStatus::TidakAda;
+
+            $rows[] = [
+                $i + 1,
+                $applicant->registration_number,
+                $applicant->name,
+                $applicant->school->name,
+                $fatherAbsent ? 'Tidak ada/almarhum' : $fatherStatus->label(),
+                $motherAbsent ? 'Tidak ada/almarhum' : $motherStatus->label(),
+                implode(' dan ', array_filter([
+                    $fatherAbsent ? 'Ayah' : null,
+                    $motherAbsent ? 'Ibu' : null,
+                ])),
+            ];
+        }
+
+        return (new Report('Rekap Siswa Yatim', $this->sub($year), [count($rows).' siswa dengan status KTP ayah atau ibu Tidak ada/almarhum.']))
+            ->section(null, array_map(fn ($label) => Report::col($label), [
+                'No', 'Nomor pendaftaran', 'Nama siswa', 'Asal sekolah', 'Status KTP ayah', 'Status KTP ibu', 'Yatim dari',
+            ]), $rows);
     }
 
     // ------------------------------------------------------------------ daftar ulang dan keuangan

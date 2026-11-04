@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Enums\DocumentStatus;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
+use App\Models\ApplicantDocument;
 use App\Models\DiscountPeriod;
 use App\Models\Payment;
 use App\Models\Referrer;
@@ -149,14 +151,14 @@ class ReportTest extends TestCase
     public function test_index_lists_only_reports_allowed_for_the_role(): void
     {
         $this->actingAs($this->admin)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Reward Pembawa')->assertSee('Daftar Pendaftar')->assertSee('Rekap Pembayaran Harian')->assertSee('Rekap Penyerahan Seragam')
+            ->assertSee('Rekap Reward Pembawa')->assertSee('Daftar Pendaftar')->assertSee('Rekap Siswa Yatim')->assertSee('Rekap Pembayaran Harian')->assertSee('Rekap Penyerahan Seragam')
             ->assertDontSee('Rincian Pembawa');
         $this->actingAs($this->reg)->get('/laporan')->assertOk()
-            ->assertSee('Daftar Pendaftar')->assertSee('Daftar Berkas Kurang')->assertDontSee('Rekap Reward Pembawa')->assertDontSee('Rekap Pembayaran Harian');
+            ->assertSee('Daftar Pendaftar')->assertSee('Daftar Berkas Kurang')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Reward Pembawa')->assertDontSee('Rekap Pembayaran Harian');
         $this->actingAs($this->clerk)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Pembayaran Harian')->assertSee('Daftar Tunggakan')->assertDontSee('Daftar Pendaftar')->assertDontSee('Rekap Reward Pembawa');
+            ->assertSee('Rekap Pembayaran Harian')->assertSee('Daftar Tunggakan')->assertDontSee('Daftar Pendaftar')->assertDontSee('Rekap Siswa Yatim')->assertDontSee('Rekap Reward Pembawa');
         $this->actingAs($this->staff)->get('/laporan')->assertOk()
-            ->assertSee('Rekap Kebutuhan Ukuran Seragam')->assertDontSee('Daftar Tunggakan')->assertDontSee('Rekap Pembayaran Harian');
+            ->assertSee('Rekap Kebutuhan Ukuran Seragam')->assertDontSee('Daftar Tunggakan')->assertDontSee('Rekap Pembayaran Harian')->assertDontSee('Rekap Siswa Yatim');
     }
 
     public function test_report_access_rules(): void
@@ -166,6 +168,7 @@ class ReportTest extends TestCase
             'daftar-ulang' => [$this->admin, $this->clerk], 'pembayaran-harian' => [$this->admin, $this->clerk],
             'tunggakan' => [$this->admin, $this->clerk], 'keuangan' => [$this->admin, $this->clerk], 'diskon' => [$this->admin, $this->clerk],
             'reward' => [$this->admin],
+            'siswa-yatim' => [$this->admin],
             'seragam-belum-ambil' => [$this->admin, $this->staff], 'seragam-penyerahan' => [$this->admin, $this->staff],
             'seragam-ukuran' => [$this->admin, $this->staff], 'seragam-mundur' => [$this->admin, $this->staff],
         ];
@@ -180,6 +183,7 @@ class ReportTest extends TestCase
         $this->actingAs($this->admin)->get('/laporan/tidak-ada')->assertNotFound();
         $this->actingAs($this->admin)->get('/laporan/reward-rincian')->assertNotFound(); // tanpa pembawa
         $this->actingAs($this->reg)->get("/laporan/reward-rincian?referrer={$this->refX->id}")->assertForbidden();
+        $this->actingAs($this->reg)->get('/laporan/siswa-yatim?format=xlsx')->assertForbidden();
     }
 
     public function test_guest_is_redirected_to_login(): void
@@ -230,6 +234,41 @@ class ReportTest extends TestCase
 
         $this->assertSame(['Murid Kurang'], $this->names($report, 2));
         $this->assertStringContainsString('Akta kelahiran', $this->rows($report)[0][5]);
+    }
+
+    public function test_orphan_report_includes_applicants_missing_either_parent_ktp_once(): void
+    {
+        $fatherAbsent = $this->applicant(1, ['name' => 'Ayah Tidak Ada']);
+        $motherAbsent = $this->applicant(2, ['name' => 'Ibu Tidak Ada', 'school_id' => $this->school2->id]);
+        $bothAbsent = $this->applicant(3, ['name' => 'Keduanya Tidak Ada']);
+        $familyFlagOnly = $this->applicant(4, ['name' => 'Hanya Data KK']);
+        $complete = $this->applicant(5, ['name' => 'KTP Lengkap']);
+        $archived = AcademicYear::create([
+            'name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false,
+        ]);
+        $this->applicant(6, ['name' => 'Arsip', 'academic_year_id' => $archived->id]);
+
+        ApplicantDocument::create(['applicant_id' => $fatherAbsent->id, 'type' => 'ktp_ayah', 'status' => DocumentStatus::TidakAda]);
+        ApplicantDocument::create(['applicant_id' => $motherAbsent->id, 'type' => 'ktp_ibu', 'status' => DocumentStatus::TidakAda]);
+        ApplicantDocument::create(['applicant_id' => $bothAbsent->id, 'type' => 'ktp_ayah', 'status' => DocumentStatus::TidakAda]);
+        ApplicantDocument::create(['applicant_id' => $bothAbsent->id, 'type' => 'ktp_ibu', 'status' => DocumentStatus::TidakAda]);
+        ApplicantDocument::create(['applicant_id' => $familyFlagOnly->id, 'type' => 'ktp_ayah', 'status' => DocumentStatus::Belum]);
+        ApplicantDocument::create(['applicant_id' => $complete->id, 'type' => 'ktp_ayah', 'status' => DocumentStatus::Diterima]);
+        ApplicantDocument::create(['applicant_id' => $complete->id, 'type' => 'ktp_ibu', 'status' => DocumentStatus::Diterima]);
+
+        $report = $this->build('siswa-yatim');
+
+        $this->assertSame(['Ayah Tidak Ada', 'Ibu Tidak Ada', 'Keduanya Tidak Ada'], $this->names($report, 2));
+        $this->assertSame('Tidak ada/almarhum', $this->rows($report)[0][4]);
+        $this->assertSame('Belum diterima', $this->rows($report)[0][5]);
+        $this->assertSame('Ayah dan Ibu', $this->rows($report)[2][6]);
+        $this->assertSame('SMP 2', $this->rows($report)[1][3]);
+
+        $this->actingAs($this->admin)->get('/laporan/siswa-yatim')->assertOk()
+            ->assertSee('Rekap Siswa Yatim')
+            ->assertSee('Keduanya Tidak Ada')
+            ->assertDontSee('Hanya Data KK')
+            ->assertDontSee('Arsip');
     }
 
     // ---------- daftar ulang dan keuangan ----------
