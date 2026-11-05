@@ -39,7 +39,7 @@ class SchoolTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['event' => 'school.created', 'user_id' => $admin->id]);
     }
 
-    public function test_npsn_is_optional_but_must_be_8_digits_and_unique(): void
+    public function test_npsn_is_optional_but_must_be_8_alphanumeric_characters_and_unique(): void
     {
         $admin = $this->admin();
 
@@ -50,8 +50,14 @@ class SchoolTest extends TestCase
         $this->actingAs($admin)->post('/schools', ['name' => 'SMP C', 'npsn' => '123', 'regency_code' => '33.19'])
             ->assertSessionHasErrors('npsn');
 
-        $this->actingAs($admin)->post('/schools', ['name' => 'SMP C', 'npsn' => '20300001', 'regency_code' => '33.19']);
-        $this->actingAs($admin)->post('/schools', ['name' => 'SMP D', 'npsn' => '20300001', 'regency_code' => '33.19'])
+        $this->actingAs($admin)->post('/schools', ['name' => 'SMP C', 'npsn' => 'P2965829', 'regency_code' => '33.19'])
+            ->assertRedirect('/schools');
+        $this->assertDatabaseHas('schools', ['name' => 'SMP C', 'npsn' => 'P2965829']);
+
+        $this->actingAs($admin)->post('/schools', ['name' => 'SMP D', 'npsn' => '20300001', 'regency_code' => '33.19']);
+        $this->actingAs($admin)->post('/schools', ['name' => 'SMP E', 'npsn' => '20300001', 'regency_code' => '33.19'])
+            ->assertSessionHasErrors('npsn');
+        $this->actingAs($admin)->post('/schools', ['name' => 'SMP F', 'npsn' => 'P29658-9', 'regency_code' => '33.19'])
             ->assertSessionHasErrors('npsn');
     }
 
@@ -109,11 +115,12 @@ class SchoolTest extends TestCase
             ['Nama Sekolah', 'NPSN', 'Kode Kabupaten/Kota'],
             ['SMP Negeri 1 Kudus', '20300001', '3319'],
             ['SMP Negeri 2 Jepara', '', '33.20'],
+            ['SMP Negeri 3 Kudus', 'P2965829', '33.19'],
         ], true));
 
         $this->actingAs($admin)->post('/schools/import', ['file' => $file])
             ->assertRedirect('/schools')
-            ->assertSessionHas('success', '2 sekolah berhasil diimpor.');
+            ->assertSessionHas('success', '3 sekolah berhasil diimpor.');
 
         $this->assertDatabaseHas('schools', [
             'name' => 'SMP Negeri 1 Kudus',
@@ -127,6 +134,11 @@ class SchoolTest extends TestCase
             'npsn' => null,
             'regency_code' => '33.20',
             'regency_name' => 'KAB. JEPARA',
+        ]);
+        $this->assertDatabaseHas('schools', [
+            'name' => 'SMP Negeri 3 Kudus',
+            'npsn' => 'P2965829',
+            'regency_code' => '33.19',
         ]);
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'schools.imported',

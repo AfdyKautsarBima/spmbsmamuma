@@ -71,7 +71,7 @@ class SchoolImportService
                     'required', 'string', 'max:150',
                     Rule::unique('schools', 'name')->where('regency_code', $data['regency_code']),
                 ],
-                'npsn' => ['nullable', 'digits:8', Rule::unique('schools', 'npsn')],
+                'npsn' => ['nullable', 'regex:/\A[A-Za-z0-9]{8}\z/', Rule::unique('schools', 'npsn')],
                 'regency_code' => ['required', Rule::exists('regions', 'code')->where('level', 2)],
             ], [
                 'name.unique' => 'Sekolah dengan nama yang sama sudah ada di kabupaten/kota tersebut.',

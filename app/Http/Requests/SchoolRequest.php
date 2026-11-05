@@ -31,7 +31,7 @@ class SchoolRequest extends FormRequest
                 'required', 'string', 'max:150',
                 Rule::unique('schools', 'name')->where('regency_code', $this->input('regency_code'))->ignore($school),
             ],
-            'npsn'         => ['nullable', 'digits:8', Rule::unique('schools', 'npsn')->ignore($school)],
+            'npsn'         => ['nullable', 'regex:/\A[A-Za-z0-9]{8}\z/', Rule::unique('schools', 'npsn')->ignore($school)],
             'regency_code' => ['required', Rule::exists('regions', 'code')->where('level', 2)],
         ];
     }

@@ -22,9 +22,9 @@
         </div>
         <div>
             <label for="npsn" class="mb-1 block text-sm font-medium">NPSN (opsional)</label>
-            <input id="npsn" name="npsn" value="{{ old('npsn', $school->npsn) }}" inputmode="numeric" maxlength="8"
+            <input id="npsn" name="npsn" value="{{ old('npsn', $school->npsn) }}" maxlength="8"
                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-            <p class="mt-1 text-xs text-slate-500">8 digit angka.</p>
+            <p class="mt-1 text-xs text-slate-500">8 karakter huruf dan angka.</p>
         </div>
         <div>
             <p class="mb-2 text-sm font-medium">Kabupaten/kota asal</p>

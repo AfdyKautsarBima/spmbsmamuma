@@ -14,7 +14,7 @@
                 <h2 class="font-medium">Import sekolah dari Excel</h2>
                 <p class="mt-1 text-sm text-slate-500">
                     Unggah .xlsx dengan kolom Nama Sekolah, NPSN (opsional), dan Kode Kabupaten/Kota.
-                    Kode kabupaten/kota harus sesuai kode pada master wilayah. Format NPSN sebagai teks jika diawali angka 0.
+                    Kode kabupaten/kota harus sesuai kode pada master wilayah. NPSN berisi 8 karakter huruf/angka; format sebagai teks jika diawali angka 0.
                 </p>
             </div>
             <a href="{{ route('schools.import-template') }}" class="rounded border px-3 py-2 text-sm hover:bg-slate-50">

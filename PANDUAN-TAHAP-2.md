@@ -47,7 +47,7 @@ bawaan di `config/spmb.php` (provinsi 33 dan kabupaten 33.20 serta 33.19), dan p
 - **Wilayah:** satu tabel `regions` (4 tingkat). Dropdown memuat per tingkat lewat `/wilayah`.
   Pada pilihan kabupaten, Jepara lalu Kudus tampil paling atas. Provinsi bawaan Jawa Tengah.
 - **Komponen `<x-region-picker>`:** dipakai form sekolah (2 tingkat) dan nanti form pendaftar (4 tingkat).
-- **Asal sekolah:** nama, NPSN (opsional, 8 digit, unik), kabupaten/kota asal. Dinonaktifkan, tidak dihapus.
+- **Asal sekolah:** nama, NPSN (opsional, 8 karakter huruf/angka, unik), kabupaten/kota asal. Dinonaktifkan, tidak dihapus.
   Nama kabupaten disalin sebagai teks agar tidak berubah bila data wilayah diperbarui.
 - **Pembawa:** nama yang sama setelah dinormalkan (abaikan huruf besar/kecil, spasi, titik, gelar seperti
   H., Drs., Pak, Bu) ditolak. Nama mirip (satu nama termuat di nama lain, atau selisih ketikan kecil)
