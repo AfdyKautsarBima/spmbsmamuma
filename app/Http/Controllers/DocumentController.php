@@ -37,6 +37,19 @@ class DocumentController extends Controller
                 ->orWhere('nisn', 'like', "%{$s}%")))
             ->when($request->status === 'lengkap', fn ($q) => $q->where('documents_complete', true))
             ->when($request->status === 'belum', fn ($q) => $q->where('documents_complete', false))
+            ->when($request->has('enrollment_status'), function ($query) use ($request) {
+                $status = $request->input('enrollment_status');
+                $query->where(function ($q) use ($status) {
+                    if (in_array($status, ['menyicil', 'lunas'], true)) {
+                        $q->enrollmentStatus($status);
+
+                        return;
+                    }
+
+                    $q->enrollmentStatus('menyicil')
+                        ->orWhere(fn ($paid) => $paid->enrollmentStatus('lunas'));
+                });
+            })
             ->orderByDesc('registration_seq')
             ->paginate(25)
             ->withQueryString();

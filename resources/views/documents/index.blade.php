@@ -12,6 +12,12 @@
             <option value="lengkap" @selected(request('status') === 'lengkap')>Lengkap</option>
             <option value="belum" @selected(request('status') === 'belum')>Belum lengkap</option>
         </select>
+        <select name="enrollment_status" class="rounded border border-slate-300 px-3 py-2 text-sm">
+            <option value="">Semua (menyicil & lunas)</option>
+            @foreach ([\App\Enums\EnrollmentStatus::Menyicil, \App\Enums\EnrollmentStatus::Lunas] as $enrollmentStatus)
+                <option value="{{ $enrollmentStatus->value }}" @selected(request('enrollment_status') === $enrollmentStatus->value)>{{ $enrollmentStatus->label() }}</option>
+            @endforeach
+        </select>
         <button class="rounded border px-4 py-2 text-sm hover:bg-white">Filter</button>
     </form>
 

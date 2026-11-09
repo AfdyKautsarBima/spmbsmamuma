@@ -7,9 +7,11 @@ use App\Enums\DocumentType;
 use App\Enums\Role;
 use App\Models\AcademicYear;
 use App\Models\Applicant;
+use App\Models\ApplicantBilling;
 use App\Models\ApplicantDocument;
 use App\Models\ApplicantFamilyDetail;
 use App\Models\Occupation;
+use App\Models\Payment;
 use App\Models\School;
 use App\Models\User;
 use App\Services\DocumentChecklist;
@@ -645,6 +647,43 @@ class DocumentTest extends TestCase
         $this->actingAs($this->user)->get('/berkas?status=belum')->assertSee('Murid Kurang')->assertDontSee('Murid Lengkap')
             ->assertSee('Akta kelahiran');
         $this->actingAs($this->user)->get('/berkas?q=A-002')->assertSee('Murid Kurang')->assertDontSee('Murid Lengkap');
+    }
+
+    public function test_index_filters_by_installment_and_paid_enrollment_status(): void
+    {
+        $installment = $this->makeApplicant(1, ['name' => 'Murid Menyicil']);
+        $paid = $this->makeApplicant(2, ['name' => 'Murid Lunas']);
+        $registered = $this->makeApplicant(3, ['name' => 'Murid Belum Bayar']);
+
+        foreach ([$installment, $paid, $registered] as $applicant) {
+            ApplicantBilling::create([
+                'applicant_id' => $applicant->id,
+                'academic_year_id' => $this->year->id,
+                'fee_snapshot' => 100,
+                'discount_percent' => 0,
+                'discount_type' => 'none',
+                'net_bill' => 100,
+            ]);
+        }
+
+        foreach ([[$installment, 40], [$paid, 100]] as [$applicant, $amount]) {
+            Payment::create([
+                'applicant_id' => $applicant->id,
+                'academic_year_id' => $this->year->id,
+                'receipt_seq' => $applicant->registration_seq,
+                'receipt_number' => 'KW-2026-'.str_pad((string) $applicant->registration_seq, 5, '0', STR_PAD_LEFT),
+                'amount' => $amount,
+                'paid_at' => now(),
+                'received_by' => $this->user->id,
+            ]);
+        }
+
+        $this->actingAs($this->user)->get('/berkas?enrollment_status=menyicil')
+            ->assertSee('Murid Menyicil')->assertDontSee('Murid Lunas')->assertDontSee('Murid Belum Bayar');
+        $this->actingAs($this->user)->get('/berkas?enrollment_status=lunas')
+            ->assertSee('Murid Lunas')->assertDontSee('Murid Menyicil')->assertDontSee('Murid Belum Bayar');
+        $this->actingAs($this->user)->get('/berkas?enrollment_status=')
+            ->assertSee('Murid Menyicil')->assertSee('Murid Lunas')->assertDontSee('Murid Belum Bayar');
     }
 
     public function test_applicant_page_shows_document_summary_and_kk_data(): void
