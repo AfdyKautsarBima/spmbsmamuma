@@ -40,7 +40,7 @@ class DocumentController extends Controller
             ->when($request->has('enrollment_status'), function ($query) use ($request) {
                 $status = $request->input('enrollment_status');
                 $query->where(function ($q) use ($status) {
-                    if (in_array($status, ['menyicil', 'lunas'], true)) {
+                    if (in_array($status, ['terdaftar', 'menyicil', 'lunas'], true)) {
                         $q->enrollmentStatus($status);
 
                         return;

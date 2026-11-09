@@ -684,6 +684,8 @@ class DocumentTest extends TestCase
             ->assertSee('Murid Lunas')->assertDontSee('Murid Menyicil')->assertDontSee('Murid Belum Bayar');
         $this->actingAs($this->user)->get('/berkas?enrollment_status=')
             ->assertSee('Murid Menyicil')->assertSee('Murid Lunas')->assertDontSee('Murid Belum Bayar');
+        $this->actingAs($this->user)->get('/berkas?enrollment_status=terdaftar')
+            ->assertSee('Murid Belum Bayar')->assertDontSee('Murid Menyicil')->assertDontSee('Murid Lunas');
     }
 
     public function test_applicant_page_shows_document_summary_and_kk_data(): void
