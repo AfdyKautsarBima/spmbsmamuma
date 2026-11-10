@@ -340,11 +340,15 @@ class ReportBuilder
                 continue;
             }
             $first = $a->payments->sortBy('paid_at')->first()?->paid_at;
+            $paymentNotes = $a->payments
+                ->pluck('note')
+                ->filter(fn ($note) => filled($note))
+                ->join('; ');
             $rows[] = [
                 ++$n, $a->registration_number, $a->name, $a->school->name, $s['status']->label(),
                 $s['billing']?->hasDiscount() ? $s['billing']->discount_label.' '.$s['billing']->discount_percent.'%' : '',
                 $s['net'] ?? '', $s['paid'] ?: '', $s['status']->value === 'mundur' ? '' : ($s['remaining'] ?? ''),
-                $first?->format('d/m/Y') ?? '',
+                $first?->format('d/m/Y') ?? '', $paymentNotes,
             ];
         }
 
@@ -352,7 +356,7 @@ class ReportBuilder
             ->section(null, [
                 Report::col('No'), Report::col('Nomor'), Report::col('Nama'), Report::col('Asal sekolah'), Report::col('Status'),
                 Report::col('Diskon'), Report::col('Tagihan bersih', 'rp'), Report::col('Dibayar', 'rp'), Report::col('Sisa', 'rp'),
-                Report::col('Pembayaran pertama'),
+                Report::col('Pembayaran pertama'), Report::col('Catatan pembayaran'),
             ], $rows);
     }
 

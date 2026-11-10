@@ -437,6 +437,21 @@ class ReportTest extends TestCase
             ->assertSee('type="checkbox" name="status[]"', false);
     }
 
+    public function test_enrollment_report_includes_payment_notes(): void
+    {
+        $applicant = $this->applicant(1, ['name' => 'Murid Catatan']);
+        app(EnrollmentService::class)->addPayment($applicant, 250000, 'Cicilan pertama', $this->clerk);
+        app(EnrollmentService::class)->addPayment($applicant, 250000, 'Pelunasan', $this->clerk);
+
+        $report = $this->build('daftar-ulang');
+        $this->assertSame('Catatan pembayaran', $report->sections[0]['columns'][10]['label']);
+        $this->assertSame('Cicilan pertama; Pelunasan', $this->rows($report)[0][10]);
+
+        $this->actingAs($this->clerk)->get('/laporan/daftar-ulang')
+            ->assertOk()
+            ->assertSee('Cicilan pertama; Pelunasan');
+    }
+
     public function test_daily_payments_report_totals_per_day_and_per_receiver(): void
     {
         $second = User::factory()->role(Role::DaftarUlang)->create(['name' => 'Zaenal Kasir']);
