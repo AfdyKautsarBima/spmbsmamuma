@@ -81,6 +81,8 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::delete('applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::patch('applicants/{applicant}/restore', [ApplicantController::class, 'restore'])->withTrashed()->name('applicants.restore');
+        Route::delete('applicants/{applicant}/permanent', [ApplicantController::class, 'forceDelete'])
+            ->withTrashed()->name('applicants.force-delete');
 
         Route::resource('academic-years', AcademicYearController::class)->except(['show', 'destroy']);
         Route::patch('academic-years/{academic_year}/activate', [AcademicYearController::class, 'activate'])

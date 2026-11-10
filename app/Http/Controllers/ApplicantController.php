@@ -12,6 +12,7 @@ use App\Services\EnrollmentService;
 use App\Services\WhatsAppMessageTemplate;
 use App\Support\DateInput;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -218,6 +219,41 @@ class ApplicantController extends Controller
         );
 
         return redirect()->route('applicants.show', $applicant)->with('success', 'Data pendaftar dipulihkan.');
+    }
+
+    public function forceDelete(Request $request, Applicant $applicant): RedirectResponse
+    {
+        abort_unless($applicant->trashed(), 404);
+
+        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']], [], ['reason' => 'alasan']);
+
+        if ($applicant->payments()->whereNull('cancelled_at')->exists()) {
+            return back()->with('error', 'Pendaftar masih memiliki pembayaran sah. Batalkan pembayaran tersebut sebelum menghapus permanen.');
+        }
+
+        if ($applicant->uniformHandovers()->exists()) {
+            return back()->with('error', 'Pendaftar memiliki riwayat serah terima seragam. Data tidak dapat dihapus permanen agar riwayat tetap utuh.');
+        }
+
+        DB::transaction(function () use ($applicant, $data) {
+            $applicant->payments()->whereNotNull('cancelled_at')->delete();
+            $applicant->billing()->delete();
+            $applicant->uniformSizes()->delete();
+            $applicant->uniformEntitlement()->delete();
+
+            ActivityLog::record(
+                'applicant.force_deleted',
+                "Data pendaftar {$applicant->registration_number} {$applicant->name} dihapus permanen",
+                $applicant,
+                null,
+                null,
+                $data['reason'],
+            );
+
+            $applicant->forceDelete();
+        });
+
+        return redirect()->route('applicants.index')->with('success', 'Data pendaftar dihapus permanen.');
     }
 
     /** Bukti pendaftaran: halaman siap cetak (bisa disimpan sebagai PDF dari dialog cetak browser). */

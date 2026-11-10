@@ -64,11 +64,20 @@
     @if (auth()->user()->isAdmin())
         <div class="mt-4 rounded-lg bg-white p-4 shadow-sm">
             @if ($applicant->trashed())
-                <form method="POST" action="{{ route('applicants.restore', $applicant) }}" class="flex flex-wrap items-center gap-2">
-                    @csrf @method('PATCH')
-                    <input name="reason" required minlength="3" placeholder="Alasan memulihkan" class="w-72 rounded border border-slate-300 px-3 py-2 text-sm">
-                    <button class="rounded border px-4 py-2 text-sm hover:bg-slate-50">Pulihkan data</button>
-                </form>
+                <div class="space-y-3">
+                    <form method="POST" action="{{ route('applicants.restore', $applicant) }}" class="flex flex-wrap items-center gap-2">
+                        @csrf @method('PATCH')
+                        <input name="reason" required minlength="3" placeholder="Alasan memulihkan" class="w-72 rounded border border-slate-300 px-3 py-2 text-sm">
+                        <button class="rounded border px-4 py-2 text-sm hover:bg-slate-50">Pulihkan data</button>
+                    </form>
+                    <form method="POST" action="{{ route('applicants.force-delete', $applicant) }}" class="flex flex-wrap items-center gap-2"
+                          onsubmit="return confirm('Hapus permanen data pendaftar {{ $applicant->registration_number }} - {{ $applicant->name }}? Tindakan ini tidak dapat dibatalkan.')">
+                        @csrf @method('DELETE')
+                        <input name="reason" required minlength="3" placeholder="Alasan menghapus permanen" class="w-72 rounded border border-red-300 px-3 py-2 text-sm">
+                        <button class="rounded border border-red-300 px-4 py-2 text-sm text-red-700 hover:bg-red-50">Hapus permanen</button>
+                    </form>
+                    <p class="text-xs text-slate-500">Pembayaran sah atau serah terima seragam mencegah penghapusan permanen. Pembayaran yang sudah dibatalkan ikut dihapus; log aktivitas tetap disimpan untuk audit.</p>
+                </div>
             @else
                 <form method="POST" action="{{ route('applicants.destroy', $applicant) }}" class="flex flex-wrap items-center gap-2"
                       onsubmit="return confirm('Hapus pendaftar {{ $applicant->registration_number }}? Data tidak hilang permanen dan bisa dipulihkan admin.')">

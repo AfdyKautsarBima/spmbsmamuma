@@ -386,6 +386,64 @@ class ApplicantTest extends TestCase
         $this->assertNull($applicant->fresh()->deleted_at);
     }
 
+    public function test_admin_can_permanently_delete_soft_deleted_applicant(): void
+    {
+        $applicant = $this->makeApplicant(1);
+        $admin = User::factory()->admin()->create();
+        $applicant->delete();
+
+        $this->actingAs($admin)->get("/applicants/{$applicant->id}")
+            ->assertOk()
+            ->assertSee('Hapus permanen');
+
+        $this->actingAs($admin)->delete("/applicants/{$applicant->id}/permanent", ['reason' => 'data duplikat'])
+            ->assertRedirect('/applicants');
+
+        $this->assertDatabaseMissing('applicants', ['id' => $applicant->id]);
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'applicant.force_deleted',
+            'subject_id' => $applicant->id,
+            'reason' => 'data duplikat',
+        ]);
+    }
+
+    public function test_permanent_delete_removes_cancelled_payments_but_keeps_activity_logs(): void
+    {
+        $applicant = $this->makeApplicant(1);
+        $admin = User::factory()->admin()->create();
+        $payment = Payment::create([
+            'applicant_id' => $applicant->id,
+            'academic_year_id' => $this->year->id,
+            'receipt_seq' => 1,
+            'receipt_number' => 'K-001',
+            'amount' => 100000,
+            'paid_at' => now(),
+            'received_by' => $this->user->id,
+        ]);
+
+        $this->actingAs($admin)->delete("/applicants/{$applicant->id}", ['reason' => 'salah input'])->assertSessionHas('error');
+        app(\App\Services\EnrollmentService::class)->cancelPayment($payment, 'salah input', $admin);
+        $this->actingAs($admin)->delete("/applicants/{$applicant->id}", ['reason' => 'salah input'])->assertRedirect();
+
+        $this->actingAs($this->user)->delete("/applicants/{$applicant->id}/permanent", ['reason' => 'data duplikat'])
+            ->assertForbidden();
+
+        $this->actingAs($admin)->delete("/applicants/{$applicant->id}/permanent", ['reason' => 'data duplikat'])
+            ->assertRedirect('/applicants');
+        $this->assertDatabaseMissing('applicants', ['id' => $applicant->id]);
+        $this->assertDatabaseMissing('payments', ['applicant_id' => $applicant->id, 'receipt_number' => 'K-001']);
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'applicant.force_deleted',
+            'subject_id' => $applicant->id,
+            'reason' => 'data duplikat',
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'payment.cancelled',
+            'subject_id' => $applicant->id,
+            'reason' => 'salah input',
+        ]);
+    }
+
     // ---------- daftar, akses, cetak ----------
 
     public function test_index_search_and_filter(): void
