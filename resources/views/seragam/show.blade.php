@@ -42,7 +42,7 @@
             <dl class="space-y-2 text-sm">
                 <div class="flex justify-between"><dt>Tagihan bersih</dt><dd>{{ $state['net'] !== null ? $rp($state['net']) : '-' }}</dd></div>
                 <div class="flex justify-between"><dt>Total dibayar</dt><dd>{{ $rp($state['paid']) }}</dd></div>
-                <div class="flex justify-between"><dt>Ambang hak ({{ $applicant->academicYear->uniform_threshold_percent }}%)</dt><dd>{{ $state['required'] !== null ? $rp($state['required']) : '-' }}</dd></div>
+                <div class="flex justify-between"><dt>Ambang hak seragam</dt><dd>{{ $state['required'] !== null ? $rp($state['required']) : '-' }}</dd></div>
             </dl>
             <p class="mt-3 text-sm font-medium">
                 @if ($entitled)

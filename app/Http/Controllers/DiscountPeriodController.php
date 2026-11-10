@@ -25,7 +25,7 @@ class DiscountPeriodController extends Controller
     {
         abort_if(! AcademicYear::active(), 403, 'Belum ada tahun ajaran aktif.');
 
-        return view('discount-periods.form', ['period' => new DiscountPeriod(['percent' => 10])]);
+        return view('discount-periods.form', ['period' => new DiscountPeriod()]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -34,10 +34,12 @@ class DiscountPeriodController extends Controller
         abort_if(! $year, 403, 'Belum ada tahun ajaran aktif.');
 
         $data = $this->validated($request, $year->id, null);
-        $period = DiscountPeriod::create($data + ['academic_year_id' => $year->id, 'is_active' => true]);
+        $period = DiscountPeriod::create($data + ['academic_year_id' => $year->id, 'percent' => 0, 'is_active' => true]);
 
-        ActivityLog::record('discount_period.created', "Periode diskon {$period->name} ({$period->percent}%) dibuat", $period, null, [
-            'name' => $period->name, 'percent' => $period->percent,
+        ActivityLog::record('discount_period.created', "Periode diskon {$period->name} dibuat", $period, null, [
+            'name' => $period->name,
+            'nominal_dibayar' => $period->payable_amount,
+            'batas_seragam' => $period->uniform_threshold_amount,
             'starts_on' => $period->starts_on->toDateString(), 'ends_on' => $period->ends_on->toDateString(),
         ]);
 
@@ -71,6 +73,12 @@ class DiscountPeriodController extends Controller
     {
         $this->ensureActiveYear($discountPeriod);
 
+        if (! $discountPeriod->is_active && (
+            $discountPeriod->payable_amount === null || $discountPeriod->uniform_threshold_amount === null
+        )) {
+            return back()->with('error', 'Isi nominal yang harus dibayar dan batas seragam sebelum mengaktifkan periode ini.');
+        }
+
         if (! $discountPeriod->is_active && $this->overlaps(
             $discountPeriod->academic_year_id, $discountPeriod->starts_on->toDateString(), $discountPeriod->ends_on->toDateString(), $discountPeriod->id,
         )) {
@@ -99,7 +107,8 @@ class DiscountPeriodController extends Controller
             'name'        => ['required', 'string', 'max:100'],
             'starts_on'   => ['required', 'date_format:Y-m-d'],
             'ends_on'     => ['required', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
-            'percent'     => ['required', 'integer', 'between:1,99'],
+            'payable_amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
+            'uniform_threshold_amount' => ['required', 'integer', 'min:0', 'max:1000000000'],
             'description' => ['nullable', 'string', 'max:255'],
         ], [
             'starts_on.date_format'    => 'Tanggal mulai harus berformat dd/mm/yyyy, misalnya 01/11/2026.',
@@ -107,7 +116,8 @@ class DiscountPeriodController extends Controller
             'ends_on.after_or_equal'   => 'Tanggal akhir tidak boleh sebelum tanggal mulai.',
         ], [
             'name' => 'nama periode', 'starts_on' => 'tanggal mulai', 'ends_on' => 'tanggal akhir',
-            'percent' => 'persen diskon', 'description' => 'keterangan',
+            'payable_amount' => 'nominal yang harus dibayar', 'uniform_threshold_amount' => 'batas seragam',
+            'description' => 'keterangan',
         ]);
 
         if (($period?->is_active ?? true) && $this->overlaps($yearId, $data['starts_on'], $data['ends_on'], $period?->id)) {

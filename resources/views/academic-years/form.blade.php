@@ -25,9 +25,9 @@
                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
         </div>
         <div>
-            <label for="uniform_threshold_percent" class="mb-1 block text-sm font-medium">Batas minimal seragam (% dari tagihan)</label>
-            <input id="uniform_threshold_percent" name="uniform_threshold_percent" type="number" min="0" max="100" step="1" required
-                   value="{{ old('uniform_threshold_percent', $year->uniform_threshold_percent) }}"
+            <label for="uniform_threshold_amount" class="mb-1 block text-sm font-medium">Batas minimal seragam (Rp)</label>
+            <input id="uniform_threshold_amount" name="uniform_threshold_amount" type="number" min="0" max="1000000000" step="1" required
+                   value="{{ old('uniform_threshold_amount', $year->uniform_threshold_amount) }}"
                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
         </div>
 

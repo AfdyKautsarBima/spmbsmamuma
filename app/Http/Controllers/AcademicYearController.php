@@ -30,7 +30,7 @@ class AcademicYearController extends Controller
         return view('academic-years.form', ['year' => new AcademicYear([
             'name'                      => $suggested,
             'registration_fee'          => $base?->registration_fee ?? 0,
-            'uniform_threshold_percent' => $base?->uniform_threshold_percent ?? 0,
+            'uniform_threshold_amount' => $base?->uniform_threshold_amount ?? 0,
         ]), 'copiedFrom' => $base?->name]);
     }
 
@@ -42,7 +42,7 @@ class AcademicYearController extends Controller
         ActivityLog::record('academic_year.created', "Tahun ajaran {$year->name} dibuat", $year, null, [
             'name'                      => $year->name,
             'registration_fee'          => $year->registration_fee,
-            'uniform_threshold_percent' => $year->uniform_threshold_percent,
+            'uniform_threshold_amount' => $year->uniform_threshold_amount,
         ]);
 
         return redirect()->route('academic-years.index')->with('success', "Tahun ajaran {$year->name} dibuat.");
@@ -66,7 +66,7 @@ class AcademicYearController extends Controller
         $message = 'Tahun ajaran diperbarui.';
 
         // Ambang diturunkan: murid yang pembayarannya sudah cukup menjadi berhak. Hak yang ada tidak dicabut bila ambang dinaikkan.
-        if (array_key_exists('uniform_threshold_percent', $new) && $academicYear->is_active) {
+        if (array_key_exists('uniform_threshold_amount', $new) && $academicYear->is_active) {
             $granted = app(UniformService::class)->syncYear($academicYear);
             $message .= " {$granted} murid mendapat hak seragam baru.";
         }

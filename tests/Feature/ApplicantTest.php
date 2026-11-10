@@ -26,7 +26,7 @@ class ApplicantTest extends TestCase
     {
         parent::setUp();
 
-        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => true]);
+        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => true]);
 
         foreach ([
             ['33', 'JAWA TENGAH', 1, null],
@@ -136,7 +136,7 @@ class ApplicantTest extends TestCase
 
         $this->actingAs($this->user)->post('/applicants', $this->payload())->assertSessionHasErrors('registration_number');
 
-        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         $this->makeApplicant(7, ['academic_year_id' => $archived->id]);
         $this->actingAs($this->user)->post('/applicants', $this->payload(['registration_number' => 'A-007', 'confirm_warnings' => 1, 'name' => 'Beda']))
             ->assertSessionHasNoErrors();
@@ -359,7 +359,7 @@ class ApplicantTest extends TestCase
 
     public function test_cannot_edit_applicant_from_archived_year(): void
     {
-        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         $applicant = $this->makeApplicant(1, ['academic_year_id' => $archived->id]);
 
         $this->actingAs($this->user)->get("/applicants/{$applicant->id}/edit")->assertForbidden();
@@ -458,7 +458,7 @@ class ApplicantTest extends TestCase
 
     public function test_only_admin_can_view_archived_year_list(): void
     {
-        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         $this->makeApplicant(1, ['name' => 'Murid Lama', 'academic_year_id' => $archived->id]);
         $this->makeApplicant(2, ['name' => 'Murid Baru']);
 

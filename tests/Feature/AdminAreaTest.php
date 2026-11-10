@@ -83,7 +83,7 @@ class AdminAreaTest extends TestCase
     public function test_first_academic_year_is_active_and_activation_switches(): void
     {
         $admin = User::factory()->admin()->create();
-        $payload = fn (string $name) => ['name' => $name, 'registration_fee' => 1500000, 'uniform_threshold_percent' => 60];
+        $payload = fn (string $name) => ['name' => $name, 'registration_fee' => 1500000, 'uniform_threshold_amount' => 900000];
 
         $this->actingAs($admin)->post('/academic-years', $payload('2026/2027'))->assertRedirect();
         $this->actingAs($admin)->post('/academic-years', $payload('2027/2028'))->assertRedirect();
@@ -105,21 +105,21 @@ class AdminAreaTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post('/academic-years', [
-            'name' => '2026/2028', 'registration_fee' => 0, 'uniform_threshold_percent' => 50,
+            'name' => '2026/2028', 'registration_fee' => 0, 'uniform_threshold_amount' => 500000,
         ])->assertSessionHasErrors('name');
 
         $this->actingAs($admin)->post('/academic-years', [
-            'name' => '2026/2027', 'registration_fee' => 0, 'uniform_threshold_percent' => 150,
-        ])->assertSessionHasErrors('uniform_threshold_percent');
+            'name' => '2026/2027', 'registration_fee' => 0, 'uniform_threshold_amount' => -1,
+        ])->assertSessionHasErrors('uniform_threshold_amount');
     }
 
     public function test_changing_fee_is_logged_with_old_and_new_values(): void
     {
         $admin = User::factory()->admin()->create();
-        $year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1000000, 'uniform_threshold_percent' => 50, 'is_active' => true]);
+        $year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1000000, 'uniform_threshold_amount' => 500000, 'is_active' => true]);
 
         $this->actingAs($admin)->put("/academic-years/{$year->id}", [
-            'name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_percent' => 50,
+            'name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_amount' => 500000,
         ])->assertRedirect();
 
         $log = \App\Models\ActivityLog::where('event', 'academic_year.updated')->first();

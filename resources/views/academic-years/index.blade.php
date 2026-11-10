@@ -23,7 +23,7 @@
                     <tr>
                         <td class="px-4 py-3 font-medium">{{ $year->name }}</td>
                         <td class="px-4 py-3 text-right">Rp {{ number_format($year->registration_fee, 0, ',', '.') }}</td>
-                        <td class="px-4 py-3 text-right">{{ $year->uniform_threshold_percent }}%</td>
+                        <td class="px-4 py-3 text-right">Rp {{ number_format($year->uniform_threshold_amount, 0, ',', '.') }}</td>
                         <td class="px-4 py-3">
                             @if ($year->is_active)
                                 <span class="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Aktif</span>

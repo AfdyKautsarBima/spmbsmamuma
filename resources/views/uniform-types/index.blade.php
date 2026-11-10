@@ -10,7 +10,7 @@
 
     <p class="mb-3 max-w-2xl text-sm text-slate-600">
         Semua murid yang berhak menerima semua jenis seragam yang aktif. Tandai <strong>perlu ukuran</strong> hanya untuk seragam yang ukurannya dicatat (misalnya olahraga).
-        Murid berhak setelah total pembayarannya mencapai batas persen dari tagihan bersih ({{ $year?->uniform_threshold_percent ?? 0 }}% untuk TA {{ $year?->name ?? '-' }}, diatur di menu Tahun Ajaran).
+        Murid berhak setelah total pembayaran mencapai batas minimal Rp {{ number_format($year?->uniform_threshold_amount ?? 0, 0, ',', '.') }} untuk TA {{ $year?->name ?? '-' }} (diatur di menu Tahun Ajaran). Periode diskon dapat memiliki batas seragam tersendiri.
     </p>
 
     @if ($year && $otherYears->isNotEmpty())

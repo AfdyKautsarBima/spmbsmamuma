@@ -45,7 +45,7 @@
         <tr><td>Status</td><td>: {{ $summary['status']->label() }}</td></tr>
         <tr><td>Biaya daftar ulang</td><td>: {{ $summary['billing'] ? $rp($summary['billing']->fee_snapshot) : '-' }}</td></tr>
         @if ($summary['billing']?->hasDiscount())
-            <tr><td>Diskon</td><td>: {{ $summary['billing']->discount_label }} {{ $summary['billing']->discount_percent }}%</td></tr>
+            <tr><td>{{ $summary['billing']->discount_type === 'periode' ? 'Nominal periode' : 'Diskon' }}</td><td>: {{ $summary['billing']->discount_label }}{{ $summary['billing']->discount_percent > 0 ? ' '.$summary['billing']->discount_percent.'%' : ' (tagihan '.$rp($summary['billing']->net_bill).')' }}</td></tr>
         @endif
         <tr><td>Tagihan bersih</td><td>: {{ $summary['net'] !== null ? $rp($summary['net']) : '-' }}</td></tr>
         <tr><td>Total dibayar</td><td>: {{ $rp($summary['paid']) }}</td></tr>

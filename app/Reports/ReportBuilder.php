@@ -346,7 +346,11 @@ class ReportBuilder
                 ->join('; ');
             $rows[] = [
                 ++$n, $a->registration_number, $a->name, $a->school->name, $s['status']->label(),
-                $s['billing']?->hasDiscount() ? $s['billing']->discount_label.' '.$s['billing']->discount_percent.'%' : '',
+                $s['billing']?->hasDiscount()
+                    ? ($s['billing']->discount_type === 'periode' && $s['billing']->discount_percent === 0
+                        ? 'Harga '.$s['billing']->discount_label
+                        : $s['billing']->discount_label.' '.$s['billing']->discount_percent.'%')
+                    : '',
                 $s['net'] ?? '', $s['paid'] ?: '', $s['status']->value === 'mundur' ? '' : ($s['remaining'] ?? ''),
                 $first?->format('d/m/Y') ?? '', $paymentNotes,
             ];
@@ -498,7 +502,9 @@ class ReportBuilder
     {
         $billings = ApplicantBilling::with('applicant.school')
             ->where('academic_year_id', $year->id)
-            ->where('discount_percent', '>', 0)
+            ->where(fn ($q) => $q
+                ->where('discount_percent', '>', 0)
+                ->orWhereColumn('net_bill', '<', 'fee_snapshot'))
             ->get()
             ->filter(fn ($b) => $b->applicant && ! $b->applicant->trashed())
             ->sortBy(fn ($b) => $b->applicant->registration_seq)
@@ -509,24 +515,25 @@ class ReportBuilder
         foreach ($billings as $i => $b) {
             $cut = $b->fee_snapshot - $b->net_bill;
             $type = $b->discount_type === 'manual' ? 'Khusus (admin)' : 'Periode';
-            $gk = $type.'|'.$b->discount_label.'|'.$b->discount_percent;
+            $discount = $b->discount_percent > 0 ? $b->discount_percent.'%' : 'Rp '.number_format($b->net_bill, 0, ',', '.');
+            $gk = $type.'|'.$b->discount_label.'|'.$discount;
             $groups[$gk] = [
-                'type' => $type, 'label' => $b->discount_label, 'percent' => $b->discount_percent,
+                'type' => $type, 'label' => $b->discount_label, 'discount' => $discount,
                 'count' => ($groups[$gk]['count'] ?? 0) + 1, 'cut' => ($groups[$gk]['cut'] ?? 0) + $cut,
             ];
             $rows[] = [
                 $i + 1, $b->applicant->registration_number, $b->applicant->name, $b->applicant->school->name, $type, $b->discount_label,
-                $b->discount_percent.'%', $b->fee_snapshot, $cut, $b->net_bill, $b->reason ?? '',
+                $discount, $b->fee_snapshot, $cut, $b->net_bill, $b->reason ?? '',
             ];
         }
 
         ksort($groups);
-        $summary = array_map(fn ($g) => [$g['type'], $g['label'], $g['percent'].'%', $g['count'], $g['cut']], array_values($groups));
+        $summary = array_map(fn ($g) => [$g['type'], $g['label'], $g['discount'], $g['count'], $g['cut']], array_values($groups));
         $footer = ['Total', '', '', Report::num(array_sum(array_column($groups, 'count'))), Report::rp(array_sum(array_column($groups, 'cut')))];
 
         return (new Report('Rekap Diskon', $this->sub($year), [count($rows).' murid berdiskon.']))
             ->section('Rekap per periode / jenis diskon', [
-                Report::col('Jenis'), Report::col('Nama'), Report::col('Diskon'), Report::col('Jumlah murid', 'int'), Report::col('Total potongan', 'rp'),
+                Report::col('Jenis'), Report::col('Nama'), Report::col('Diskon / tagihan periode'), Report::col('Jumlah murid', 'int'), Report::col('Total potongan', 'rp'),
             ], $summary, $groups ? $footer : null)
             ->section('Daftar murid berdiskon', [
                 Report::col('No'), Report::col('Nomor'), Report::col('Nama'), Report::col('Asal sekolah'), Report::col('Jenis'), Report::col('Nama diskon'),

@@ -32,7 +32,7 @@ class DateFormatTest extends TestCase
 
         Carbon::setTestNow('2026-12-05 10:00:00');
 
-        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_percent' => 60, 'is_active' => true]);
+        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_amount' => 900000, 'is_active' => true]);
         foreach ([['33', 'JAWA TENGAH', 1, null], ['33.19', 'KAB. KUDUS', 2, '33'], ['33.19.01', 'KALIWUNGU', 3, '33.19'], ['33.19.01.2001', 'BAKALAN', 4, '33.19.01']] as [$c, $n, $l, $p]) {
             Region::create(['code' => $c, 'name' => $n, 'level' => $l, 'parent_code' => $p]);
         }
@@ -167,7 +167,8 @@ class DateFormatTest extends TestCase
     public function test_discount_period_dates_use_ddmmyyyy(): void
     {
         $this->actingAs($this->admin)->post('/discount-periods', [
-            'name' => 'Gelombang 1', 'starts_on' => '01/11/2026', 'ends_on' => '30/11/2026', 'percent' => 10,
+            'name' => 'Gelombang 1', 'starts_on' => '01/11/2026', 'ends_on' => '30/11/2026',
+            'payable_amount' => 1200000, 'uniform_threshold_amount' => 700000,
         ])->assertSessionHasNoErrors();
 
         $period = DiscountPeriod::firstOrFail();
@@ -182,7 +183,8 @@ class DateFormatTest extends TestCase
     public function test_discount_period_rejects_wrong_dates(): void
     {
         $post = fn (string $start, string $end) => $this->actingAs($this->admin)->post('/discount-periods', [
-            'name' => 'P', 'starts_on' => $start, 'ends_on' => $end, 'percent' => 10,
+            'name' => 'P', 'starts_on' => $start, 'ends_on' => $end,
+            'payable_amount' => 1200000, 'uniform_threshold_amount' => 700000,
         ]);
 
         $post('30/02/2026', '30/11/2026')->assertSessionHasErrors(['starts_on' => 'Tanggal mulai harus berformat dd/mm/yyyy, misalnya 01/11/2026.']);

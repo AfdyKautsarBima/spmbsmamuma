@@ -31,7 +31,7 @@ class DocumentTest extends TestCase
     {
         parent::setUp();
 
-        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => true]);
+        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => true]);
         $this->school = School::create(['name' => 'SMP 1', 'regency_code' => '33.19', 'regency_name' => 'KAB. KUDUS']);
         $this->job = Occupation::create(['name' => 'Petani/Pekebun']);
         $this->user = User::factory()->create(); // panitia pendaftaran
@@ -372,7 +372,7 @@ class DocumentTest extends TestCase
             ->assertSessionHasErrors('family.student_nik');
 
         // tahun ajaran lain: boleh
-        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         ApplicantFamilyDetail::where('applicant_id', $first->id)->update(['academic_year_id' => $archived->id]);
         $this->submit($second, $this->docs(['kk' => 'diterima']), ['family' => $this->family()])->assertSessionHasNoErrors();
     }
@@ -626,7 +626,7 @@ class DocumentTest extends TestCase
 
     public function test_archived_year_and_deleted_applicants_cannot_be_edited(): void
     {
-        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $archived = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         $old = $this->makeApplicant(1, ['academic_year_id' => $archived->id]);
         $gone = $this->makeApplicant(2);
         $gone->delete();

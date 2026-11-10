@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
             AcademicYear::create([
                 'name'                      => '2026/2027',
                 'registration_fee'          => 0,
-                'uniform_threshold_percent' => 0,
+                'uniform_threshold_amount' => 0,
                 'is_active'                 => true,
             ]);
         }

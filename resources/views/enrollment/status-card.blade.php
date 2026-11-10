@@ -7,7 +7,7 @@
         Daftar ulang dan pembayaran
         <span class="ml-2 rounded px-2 py-1 text-xs {{ $enrollmentSummary['status']->badgeClass() }}">{{ $enrollmentSummary['status']->label() }}</span>
         @if ($enrollmentSummary['billing']?->hasDiscount())
-            <span class="ml-1 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">Diskon {{ $enrollmentSummary['billing']->discount_percent }}%</span>
+            <span class="ml-1 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">{{ $enrollmentSummary['billing']->discount_type === 'periode' ? 'Harga '.$enrollmentSummary['billing']->discount_label : 'Diskon '.$enrollmentSummary['billing']->discount_percent.'%' }}</span>
         @endif
     </h2>
     <dl class="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">

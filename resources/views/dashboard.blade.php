@@ -11,7 +11,7 @@
                 <p class="text-2xl font-semibold">{{ $year->name }}</p>
                 <dl class="mt-3 space-y-1 text-sm">
                     <div class="flex justify-between"><dt>Biaya daftar ulang</dt><dd>Rp {{ number_format($year->registration_fee, 0, ',', '.') }}</dd></div>
-                    <div class="flex justify-between"><dt>Batas seragam</dt><dd>{{ $year->uniform_threshold_percent }}% dari tagihan</dd></div>
+                    <div class="flex justify-between"><dt>Batas seragam</dt><dd>Rp {{ number_format($year->uniform_threshold_amount, 0, ',', '.') }}</dd></div>
                 </dl>
             @else
                 <p class="text-sm text-slate-500">Belum ada tahun ajaran aktif.</p>

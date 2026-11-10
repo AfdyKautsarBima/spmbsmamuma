@@ -45,7 +45,7 @@
                         <td class="px-4 py-3">
                             <span class="rounded px-2 py-1 text-xs {{ $s['status']->badgeClass() }}">{{ $s['status']->label() }}</span>
                             @if ($s['billing']?->hasDiscount())
-                                <span class="ml-1 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">Diskon {{ $s['billing']->discount_percent }}%</span>
+                                <span class="ml-1 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">{{ $s['billing']->discount_type === 'periode' ? 'Harga '.$s['billing']->discount_label : 'Diskon '.$s['billing']->discount_percent.'%' }}</span>
                             @endif
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-right">{{ $s['paid'] > 0 ? 'Rp '.number_format($s['paid'], 0, ',', '.') : '-' }}</td>

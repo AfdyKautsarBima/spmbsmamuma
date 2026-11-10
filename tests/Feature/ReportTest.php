@@ -46,7 +46,7 @@ class ReportTest extends TestCase
 
         Carbon::setTestNow('2026-12-05 10:00:00');
 
-        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_percent' => 60, 'is_active' => true]);
+        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_amount' => 900000, 'is_active' => true]);
         $this->school = School::create(['name' => 'SMP 1', 'regency_code' => '33.19', 'regency_name' => 'KAB. KUDUS']);
         $this->school2 = School::create(['name' => 'SMP 2', 'regency_code' => '33.20', 'regency_name' => 'KAB. JEPARA']);
         $this->admin = User::factory()->admin()->create();
@@ -199,7 +199,7 @@ class ReportTest extends TestCase
 
     public function test_no_active_year_blocks_reports_and_only_admin_can_pick_another_year(): void
     {
-        $old = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $old = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         $this->applicant(1, ['name' => 'Murid Baru']);
         $this->applicant(2, ['name' => 'Murid Lama', 'academic_year_id' => $old->id]);
 
@@ -351,7 +351,7 @@ class ReportTest extends TestCase
         $familyFlagOnly = $this->applicant(4, ['name' => 'Hanya Data KK']);
         $complete = $this->applicant(5, ['name' => 'KTP Lengkap']);
         $archived = AcademicYear::create([
-            'name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false,
+            'name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false,
         ]);
         $this->applicant(6, ['name' => 'Arsip', 'academic_year_id' => $archived->id]);
 
@@ -517,7 +517,10 @@ class ReportTest extends TestCase
 
     public function test_discount_report_groups_periods_and_manual_discounts(): void
     {
-        DiscountPeriod::create(['academic_year_id' => $this->year->id, 'name' => 'Natal', 'starts_on' => '2026-12-01', 'ends_on' => '2026-12-31', 'percent' => 10]);
+        DiscountPeriod::create([
+            'academic_year_id' => $this->year->id, 'name' => 'Natal', 'starts_on' => '2026-12-01', 'ends_on' => '2026-12-31',
+            'percent' => 0, 'payable_amount' => 1350000, 'uniform_threshold_amount' => 800000,
+        ]);
         $a = $this->applicant(1, ['name' => 'Murid A']);
         $b = $this->applicant(2, ['name' => 'Murid B']);
         $c = $this->applicant(3, ['name' => 'Murid C']);
@@ -528,7 +531,7 @@ class ReportTest extends TestCase
 
         $report = $this->build('diskon');
 
-        $this->assertSame([['Khusus (admin)', 'Diskon khusus', '20%', 1, 300000], ['Periode', 'Natal', '10%', 2, 300000]], $this->rows($report, 0));
+        $this->assertSame([['Khusus (admin)', 'Diskon khusus', '20%', 1, 300000], ['Periode', 'Natal', 'Rp 1.350.000', 2, 300000]], $this->rows($report, 0));
         $this->assertSame(['Total', '', '', 3, 600000], $this->footer($report, 0));
         $this->assertSame(['Murid A', 'Murid B', 'Murid C'], $this->names($report, 2, 1));
         $this->assertSame('Anak yatim', $this->rows($report, 1)[2][10]);

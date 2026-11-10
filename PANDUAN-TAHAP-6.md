@@ -55,8 +55,8 @@ Tanggal yang ditampilkan memakai dd/mm/yyyy, dan tanggal pada cetakan memakai ha
 - Admin mengatur **jenis seragam per tahun ajaran** (menu Master Data > Jenis Seragam). Tandai "perlu ukuran"
   hanya untuk seragam yang ukurannya dicatat (olahraga). Jenis seragam bisa disalin dari tahun ajaran lain.
   Daftar ukuran (S, M, L, ...) dikelola di Master Data > Ukuran Seragam.
-- **Hak:** murid berhak bila total pembayaran sah >= batas persen x tagihan bersih (dibulatkan ke atas).
-  Batas persen diatur di menu Tahun Ajaran. Sebelum pembayaran pertama belum ada hak.
+- **Hak:** murid berhak bila total pembayaran sah mencapai nominal batas seragam yang diatur admin di menu Tahun Ajaran.
+  Periode diskon dapat menetapkan batas nominal khusus yang dibekukan saat pembayaran pertama. Sebelum pembayaran pertama belum ada hak.
 - **Hak bersifat tetap:** ambang yang berlaku saat hak muncul disimpan. Menaikkan batas tidak mencabut hak.
   Menurunkan batas memberi hak kepada murid yang pembayarannya sudah cukup.
 - **Pembayaran dibatalkan:** hak dicabut bila seragam belum diambil sama sekali. Bila sudah ada yang diambil, hak tetap

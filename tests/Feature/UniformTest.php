@@ -43,7 +43,7 @@ class UniformTest extends TestCase
 
         Carbon::setTestNow('2026-12-05 10:00:00');
 
-        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_percent' => 60, 'is_active' => true]);
+        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_amount' => 900000, 'is_active' => true]);
         $this->school = School::create(['name' => 'SMP 1', 'regency_code' => '33.19', 'regency_name' => 'KAB. KUDUS']);
         $this->clerk = User::factory()->role(Role::DaftarUlang)->create();
         $this->staff = User::factory()->role(Role::Seragam)->create();
@@ -126,27 +126,27 @@ class UniformTest extends TestCase
         $this->pay($a, 400000);
         $entitlement = $a->fresh()->uniformEntitlement;
         $this->assertNotNull($entitlement);
-        $this->assertSame(60, $entitlement->threshold_percent);
+        $this->assertSame(0, $entitlement->threshold_percent);
         $this->assertSame(900000, $entitlement->threshold_amount);
         $this->assertSame(1500000, $entitlement->net_bill);
         $this->assertSame('berhak', $this->state($a)['status']);
         $this->assertDatabaseHas('activity_logs', ['event' => 'uniform.entitled', 'subject_id' => $a->id]);
     }
 
-    public function test_threshold_is_percent_of_the_discounted_bill(): void
+    public function test_manual_discount_does_not_change_the_fixed_uniform_threshold(): void
     {
         $a = $this->applicant();
         app(EnrollmentService::class)->setManualDiscount($a, 20, 'Anak yatim', $this->admin); // tagihan bersih 1.200.000
 
-        $this->pay($a, 719999);
+        $this->pay($a, 899999);
         $this->assertFalse($a->uniformEntitlement()->exists());
         $this->pay($a, 1);
-        $this->assertSame(720000, $a->fresh()->uniformEntitlement->threshold_amount);
+        $this->assertSame(900000, $a->fresh()->uniformEntitlement->threshold_amount);
     }
 
-    public function test_zero_percent_threshold_grants_at_first_payment(): void
+    public function test_zero_amount_threshold_grants_at_first_payment(): void
     {
-        $this->year->update(['uniform_threshold_percent' => 0]);
+        $this->year->update(['uniform_threshold_amount' => 0]);
         $a = $this->applicant();
 
         $this->pay($a, 1000);
@@ -168,18 +168,18 @@ class UniformTest extends TestCase
         $b = $this->applicant(2);
         $this->pay($a, 900000);
         $this->pay($b, 500000);
-        $put = fn (int $percent) => $this->actingAs($this->admin)->put("/academic-years/{$this->year->id}", [
-            'name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_percent' => $percent,
+        $put = fn (int $amount) => $this->actingAs($this->admin)->put("/academic-years/{$this->year->id}", [
+            'name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_amount' => $amount,
         ]);
 
-        $put(90)->assertSessionHasNoErrors();
+        $put(1350000)->assertSessionHasNoErrors();
         $this->assertTrue($a->uniformEntitlement()->exists());   // hak yang sudah ada tetap
         $this->assertFalse($b->uniformEntitlement()->exists());
 
-        $put(30)->assertSessionHas('success', fn ($m) => str_contains($m, '1 murid mendapat hak seragam baru'));
-        $this->assertSame(30, $b->fresh()->uniformEntitlement->threshold_percent);
+        $put(450000)->assertSessionHas('success', fn ($m) => str_contains($m, '1 murid mendapat hak seragam baru'));
+        $this->assertSame(0, $b->fresh()->uniformEntitlement->threshold_percent);
         $this->assertSame(450000, $b->fresh()->uniformEntitlement->threshold_amount);
-        $this->assertSame(60, $a->fresh()->uniformEntitlement->threshold_percent);  // dasar hak lama tidak berubah
+        $this->assertSame(900000, $a->fresh()->uniformEntitlement->threshold_amount);  // dasar hak lama tidak berubah
     }
 
     public function test_cancelling_payment_revokes_unused_right_but_keeps_it_with_a_warning_after_pickup(): void
@@ -204,17 +204,17 @@ class UniformTest extends TestCase
         $this->assertStringContainsString('di bawah ambang', implode(' ', $this->state($used)['warnings']));
     }
 
-    public function test_manual_discount_can_make_an_unentitled_student_entitled_but_never_changes_existing_basis(): void
+    public function test_manual_discount_does_not_reduce_the_uniform_threshold(): void
     {
         $a = $this->applicant(1);
         $this->pay($a, 500000);
         $this->assertFalse($a->uniformEntitlement()->exists());
 
-        app(EnrollmentService::class)->setManualDiscount($a, 50, 'Penyesuaian', $this->admin); // bersih 750.000, ambang 450.000
-        $this->assertSame(450000, $a->fresh()->uniformEntitlement->threshold_amount);
+        app(EnrollmentService::class)->setManualDiscount($a, 50, 'Penyesuaian', $this->admin);
+        $this->assertFalse($a->uniformEntitlement()->exists());
 
         app(EnrollmentService::class)->setManualDiscount($a, 0, 'Dibatalkan', $this->admin);
-        $this->assertSame(450000, $a->fresh()->uniformEntitlement->threshold_amount);
+        $this->assertFalse($a->uniformEntitlement()->exists());
     }
 
     public function test_withdrawn_students_are_not_granted_rights_but_keep_existing_ones(): void
@@ -228,7 +228,7 @@ class UniformTest extends TestCase
         $gone = $this->applicant(2);
         $this->pay($gone, 500000);
         $svc->withdraw($gone, '2026-12-05', 'Pindah', $this->admin);
-        $this->year->update(['uniform_threshold_percent' => 30]);
+        $this->year->update(['uniform_threshold_amount' => 450000]);
         $this->svc()->syncYear($this->year->fresh());
         $this->assertFalse($gone->fresh()->uniformEntitlement()->exists());
 
@@ -457,7 +457,7 @@ class UniformTest extends TestCase
     {
         $a = $this->applicant();
         $this->pay($a, 500000);
-        $this->year->update(['uniform_threshold_percent' => 30]); // tanpa sinkronisasi
+        $this->year->update(['uniform_threshold_amount' => 450000]); // tanpa sinkronisasi
         $this->assertFalse($a->uniformEntitlement()->exists());
 
         $this->artisan('seragam:hitung-ulang')->assertSuccessful();
@@ -506,7 +506,7 @@ class UniformTest extends TestCase
 
     public function test_uniform_types_of_archived_year_are_read_only_and_can_be_copied(): void
     {
-        $old = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_percent' => 0, 'is_active' => false]);
+        $old = AcademicYear::create(['name' => '2025/2026', 'registration_fee' => 0, 'uniform_threshold_amount' => 0, 'is_active' => false]);
         $oldType = UniformType::create(['academic_year_id' => $old->id, 'name' => 'Pramuka', 'needs_size' => true]);
         UniformType::create(['academic_year_id' => $old->id, 'name' => 'Batik']); // sudah ada di tahun aktif
 

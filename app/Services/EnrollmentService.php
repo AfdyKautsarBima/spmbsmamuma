@@ -37,16 +37,17 @@ class EnrollmentService
         return DiscountPeriod::query()
             ->where('academic_year_id', $yearId)
             ->where('is_active', true)
+            ->whereNotNull('payable_amount')
+            ->whereNotNull('uniform_threshold_amount')
             ->whereDate('starts_on', '<=', $date)
             ->whereDate('ends_on', '>=', $date)
-            ->orderByDesc('percent')
             ->first();
     }
 
     /**
      * Tagihan yang berlaku untuk murid: tagihan beku bila sudah ada, atau perkiraan untuk pembayaran pertama.
      *
-     * @return array{frozen: bool, fee: int, percent: int, label: ?string, type: string, net: int}
+     * @return array{frozen: bool, fee: int, percent: int, label: ?string, type: string, net: int, uniform_threshold_amount: ?int}
      */
     public function billingFor(Applicant $applicant, ?CarbonInterface $at = null): array
     {
@@ -55,16 +56,19 @@ class EnrollmentService
             return [
                 'frozen' => true, 'fee' => $billing->fee_snapshot, 'percent' => $billing->discount_percent,
                 'label' => $billing->discount_label, 'type' => $billing->discount_type, 'net' => $billing->net_bill,
+                'uniform_threshold_amount' => $billing->uniform_threshold_amount,
             ];
         }
 
         $fee = (int) $applicant->academicYear()->value('registration_fee');
         $period = $this->periodFor($applicant->academic_year_id, $at ?? now());
-        $percent = $period?->percent ?? 0;
+        $percent = 0;
+        $net = $period?->payable_amount ?? $fee;
 
         return [
             'frozen' => false, 'fee' => $fee, 'percent' => $percent, 'label' => $period?->name,
-            'type' => $period ? 'periode' : 'none', 'net' => self::netBill($fee, $percent),
+            'type' => $period ? 'periode' : 'none', 'net' => $net,
+            'uniform_threshold_amount' => $period?->uniform_threshold_amount,
         ];
     }
 
@@ -187,15 +191,17 @@ class EnrollmentService
             'discount_type'      => $info['type'],
             'discount_period_id' => $info['type'] === 'periode' ? $this->periodFor($applicant->academic_year_id, now())?->id : null,
             'net_bill'           => $info['net'],
+            'uniform_threshold_amount' => $info['uniform_threshold_amount'],
         ]);
 
-        if ($info['percent'] > 0) {
+        if ($info['type'] === 'periode' || $info['percent'] > 0 || $info['net'] < $info['fee']) {
+            $discount = $info['percent'] > 0 ? $info['percent'].'%' : 'nominal periode';
             ActivityLog::record(
                 'discount.applied',
-                "Diskon {$info['label']} {$info['percent']}% diterapkan pada {$applicant->registration_number}",
+                "Diskon {$info['label']} ({$discount}) diterapkan pada {$applicant->registration_number}",
                 $applicant,
                 null,
-                ['diskon' => $info['percent'].'%', 'tagihan_bersih' => $info['net']],
+                ['diskon' => $discount, 'tagihan_bersih' => $info['net']],
             );
         }
 
@@ -235,12 +241,12 @@ class EnrollmentService
             if (! $stillPaid && $billing && $billing->discount_type !== 'manual') {
                 $billing->delete();
 
-                if ($billing->discount_percent > 0) {
+                if ($billing->hasDiscount()) {
                     ActivityLog::record(
                         'discount.removed',
-                        "Tanda diskon {$billing->discount_label} dilepas dari {$applicant->registration_number} karena pembayaran pertama dibatalkan",
+                        "Tanda diskon/periode {$billing->discount_label} dilepas dari {$applicant->registration_number} karena pembayaran pertama dibatalkan",
                         $applicant,
-                        ['diskon' => $billing->discount_percent.'%'],
+                        ['tagihan_bersih' => $billing->net_bill],
                         null,
                         $reason,
                     );
@@ -279,6 +285,7 @@ class EnrollmentService
                 'discount_type'      => 'manual',
                 'discount_period_id' => null,
                 'net_bill'           => $net,
+                'uniform_threshold_amount' => null,
                 'reason'             => $reason,
                 'set_by'             => $by->id,
             ];

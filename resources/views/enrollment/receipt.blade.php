@@ -47,7 +47,7 @@
         <tr><td>Terbilang</td><td>: <em>{{ ucfirst(\App\Services\Terbilang::rupiah($payment->amount)) }}</em></td></tr>
         <tr><td>Untuk pembayaran</td><td>: Biaya daftar ulang TA {{ $applicant->academicYear->name }}{{ $payment->note ? ' ('.$payment->note.')' : '' }}</td></tr>
         @if ($applicant->billing?->hasDiscount())
-            <tr><td>Diskon</td><td>: {{ $applicant->billing->discount_label }} {{ $applicant->billing->discount_percent }}% (tagihan bersih {{ $rp($applicant->billing->net_bill) }})</td></tr>
+            <tr><td>{{ $applicant->billing->discount_type === 'periode' ? 'Nominal periode' : 'Diskon' }}</td><td>: {{ $applicant->billing->discount_label }}{{ $applicant->billing->discount_percent > 0 ? ' '.$applicant->billing->discount_percent.'%' : ' (tagihan '.$rp($applicant->billing->net_bill).')' }}</td></tr>
         @endif
     </table>
 

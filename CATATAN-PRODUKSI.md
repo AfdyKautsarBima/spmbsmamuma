@@ -21,8 +21,8 @@ Simpan salinannya di perangkat lain (flash disk atau komputer lain), dan **coba 
 Jika memakai MariaDB XAMPP, ganti `mysqldump` dengan `/opt/lampp/bin/mysqldump`.
 
 ## 3. Persiapan awal tahun ajaran
-1. Menu Tahun Ajaran: buat tahun baru, isi biaya daftar ulang dan batas seragam, lalu aktifkan.
-2. Master Data > Diskon: buat periode diskon.
+1. Menu Tahun Ajaran: buat tahun baru, isi biaya daftar ulang dan batas minimal seragam dalam rupiah, lalu aktifkan.
+2. Master Data > Diskon: buat periode diskon dan isi nominal yang harus dibayar serta batas seragam khusus periode dalam rupiah.
 3. Master Data > Jenis Seragam: salin dari tahun lalu atau buat baru.
 4. Master Data: pastikan asal sekolah dan pekerjaan sudah lengkap.
 5. Menu Akun: buat akun panitia sesuai peran (satu akun satu peran).

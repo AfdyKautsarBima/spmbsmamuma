@@ -27,7 +27,7 @@ class AcademicYearRequest extends FormRequest
                 },
             ],
             'registration_fee'          => ['required', 'integer', 'min:0', 'max:1000000000'],
-            'uniform_threshold_percent' => ['required', 'integer', 'between:0,100'],
+            'uniform_threshold_amount' => ['required', 'integer', 'min:0', 'max:1000000000'],
         ];
     }
 
@@ -36,7 +36,7 @@ class AcademicYearRequest extends FormRequest
         return [
             'name'                      => 'tahun ajaran',
             'registration_fee'          => 'biaya daftar ulang',
-            'uniform_threshold_percent' => 'batas seragam',
+            'uniform_threshold_amount' => 'batas minimal seragam',
         ];
     }
 

@@ -25,9 +25,14 @@
             </div>
         </div>
         <div>
-            <label for="percent" class="mb-1 block text-sm font-medium">Diskon (%)</label>
-            <input id="percent" name="percent" type="number" min="1" max="99" required value="{{ old('percent', $period->percent) }}" class="{{ $input }}">
-            <p class="mt-1 text-xs text-slate-500">1 sampai 99. Tagihan bersih dibulatkan ke bawah.</p>
+            <label for="payable_amount" class="mb-1 block text-sm font-medium">Nominal yang harus dibayar (Rp)</label>
+            <input id="payable_amount" name="payable_amount" type="number" min="1" max="1000000000" step="1" required
+                   value="{{ old('payable_amount', $period->payable_amount) }}" class="{{ $input }}">
+        </div>
+        <div>
+            <label for="uniform_threshold_amount" class="mb-1 block text-sm font-medium">Batas minimal seragam (Rp)</label>
+            <input id="uniform_threshold_amount" name="uniform_threshold_amount" type="number" min="0" max="1000000000" step="1" required
+                   value="{{ old('uniform_threshold_amount', $period->uniform_threshold_amount) }}" class="{{ $input }}">
         </div>
         <div>
             <label for="description" class="mb-1 block text-sm font-medium">Keterangan (opsional)</label>

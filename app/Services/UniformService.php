@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class UniformService
 {
-    /** Ambang rupiah = persen dari tagihan bersih, dibulatkan ke atas. */
+    /** Legacy helper retained for historical percentage-based records and tests. */
     public static function thresholdAmount(int $netBill, int $percent): int
     {
         return intdiv($percent * $netBill + 99, 100);
@@ -62,8 +62,7 @@ class UniformService
             return;
         }
 
-        $percent = (int) $applicant->academicYear->uniform_threshold_percent;
-        $amount = self::thresholdAmount($applicant->billing->net_bill, $percent);
+        $amount = $applicant->billing->uniform_threshold_amount ?? (int) $applicant->academicYear->uniform_threshold_amount;
 
         if ($paid < $amount) {
             return;
@@ -72,7 +71,7 @@ class UniformService
         UniformEntitlement::create([
             'applicant_id'      => $applicant->id,
             'academic_year_id'  => $applicant->academic_year_id,
-            'threshold_percent' => $percent,
+            'threshold_percent' => 0,
             'threshold_amount'  => $amount,
             'net_bill'          => $applicant->billing->net_bill,
             'granted_at'        => now(),
@@ -83,7 +82,7 @@ class UniformService
             "{$applicant->registration_number} berhak menerima seragam",
             $applicant,
             null,
-            ['ambang' => $percent.'%', 'ambang_rupiah' => $amount, 'total_dibayar' => $paid],
+            ['ambang_rupiah' => $amount, 'total_dibayar' => $paid],
         );
     }
 
@@ -111,8 +110,12 @@ class UniformService
 
         $paid = (int) $applicant->payments->filter(fn ($p) => $p->cancelled_at === null)->sum('amount');
         $net = $applicant->billing?->net_bill;
-        $required = $net === null ? null : self::thresholdAmount($net, (int) $applicant->academicYear->uniform_threshold_percent);
         $entitlement = $applicant->uniformEntitlement;
+        $required = $net === null ? null : (
+            $entitlement?->threshold_amount
+            ?? $applicant->billing?->uniform_threshold_amount
+            ?? (int) $applicant->academicYear->uniform_threshold_amount
+        );
         $handovers = $applicant->uniformHandovers;
         $warnings = [];
 

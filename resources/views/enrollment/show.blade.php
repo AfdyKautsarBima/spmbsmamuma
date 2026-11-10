@@ -65,10 +65,14 @@
                 <div class="flex justify-between"><dt>Biaya daftar ulang</dt><dd>{{ $rp($info['fee']) }}</dd></div>
                 <div class="flex justify-between">
                     <dt>
-                        Diskon
-                        @if ($info['percent'] > 0)<span class="ml-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">{{ $info['label'] }} {{ $info['percent'] }}%</span>@endif
+                        Potongan tagihan
+                        @if ($info['type'] === 'periode')
+                            <span class="ml-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">{{ $info['label'] }} (nominal periode)</span>
+                        @elseif ($info['percent'] > 0)
+                            <span class="ml-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">{{ $info['label'] }} {{ $info['percent'] }}%</span>
+                        @endif
                     </dt>
-                    <dd>{{ $info['percent'] > 0 ? '- '.$rp($info['fee'] - $info['net']) : '-' }}</dd>
+                    <dd>{{ $info['net'] < $info['fee'] ? '- '.$rp($info['fee'] - $info['net']) : '-' }}</dd>
                 </div>
                 <div class="flex justify-between border-t pt-2 font-medium"><dt>Tagihan bersih{{ $info['frozen'] ? '' : ' (perkiraan)' }}</dt><dd>{{ $rp($info['net']) }}</dd></div>
                 <div class="flex justify-between"><dt>Total dibayar</dt><dd>{{ $rp($summary['paid']) }}</dd></div>

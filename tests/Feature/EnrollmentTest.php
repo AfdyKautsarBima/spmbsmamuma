@@ -35,7 +35,7 @@ class EnrollmentTest extends TestCase
 
         Carbon::setTestNow('2026-12-05 10:00:00'); // di luar periode diskon mana pun, kecuali tes yang mengubahnya
 
-        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_percent' => 60, 'is_active' => true]);
+        $this->year = AcademicYear::create(['name' => '2026/2027', 'registration_fee' => 1500000, 'uniform_threshold_amount' => 900000, 'is_active' => true]);
         $this->school = School::create(['name' => 'SMP 1', 'regency_code' => '33.19', 'regency_name' => 'KAB. KUDUS']);
         $this->clerk = User::factory()->role(Role::DaftarUlang)->create();
         $this->admin = User::factory()->admin()->create();
@@ -82,7 +82,8 @@ class EnrollmentTest extends TestCase
     {
         return DiscountPeriod::create(array_merge([
             'academic_year_id' => $this->year->id, 'name' => 'Gelombang 1',
-            'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'percent' => 20, 'is_active' => true,
+            'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'percent' => 0,
+            'payable_amount' => 1200000, 'uniform_threshold_amount' => 700000, 'is_active' => true,
         ], $override));
     }
 
@@ -174,21 +175,39 @@ class EnrollmentTest extends TestCase
         $this->pay($a, 100000)->assertSessionHasNoErrors();
 
         $billing = ApplicantBilling::firstOrFail();
-        $this->assertSame(20, $billing->discount_percent);
+        $this->assertSame(0, $billing->discount_percent);
         $this->assertSame('periode', $billing->discount_type);
         $this->assertSame(1500000, $billing->fee_snapshot);
         $this->assertSame(1200000, $billing->net_bill);
+        $this->assertSame(700000, $billing->uniform_threshold_amount);
         $this->assertDatabaseHas('activity_logs', ['event' => 'discount.applied', 'subject_id' => $a->id]);
 
         // admin mengubah periode dan biaya: murid yang sudah ditandai tidak berubah
         $this->actingAs($this->admin)->put("/discount-periods/{$period->id}", [
-            'name' => 'Gelombang 1', 'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'percent' => 50,
+            'name' => 'Gelombang 1', 'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30',
+            'payable_amount' => 750000, 'uniform_threshold_amount' => 600000,
         ])->assertSessionHasNoErrors();
         $this->year->update(['registration_fee' => 2000000]);
 
         $this->pay($a, 1100000)->assertSessionHasNoErrors();
         $this->assertSame(1200000, $billing->fresh()->net_bill);
         $this->assertSame(E::Lunas, $this->summary($a)['status']);
+    }
+
+    public function test_period_sets_fixed_uniform_threshold_and_final_payable_amount(): void
+    {
+        Carbon::setTestNow('2026-11-10 10:00:00');
+        $this->period(['payable_amount' => 1200000, 'uniform_threshold_amount' => 400000]);
+        $applicant = $this->applicant();
+
+        $this->pay($applicant, 399999);
+        $this->assertFalse($applicant->uniformEntitlement()->exists());
+
+        $this->pay($applicant, 1);
+        $this->assertSame(1200000, $applicant->fresh()->billing->net_bill);
+        $this->assertSame(400000, $applicant->fresh()->billing->uniform_threshold_amount);
+        $this->assertSame(400000, $applicant->fresh()->uniformEntitlement->threshold_amount);
+        $this->assertSame(800000, $this->summary($applicant)['remaining']);
     }
 
     public function test_no_discount_outside_period_and_boundaries_are_inclusive(): void
@@ -204,12 +223,12 @@ class EnrollmentTest extends TestCase
         Carbon::setTestNow('2026-11-30 23:30:00');
         $b = $this->applicant(2);
         $this->pay($b, 100000);
-        $this->assertSame(20, $b->fresh()->billing->discount_percent);
+        $this->assertSame(1200000, $b->fresh()->billing->net_bill);
 
         Carbon::setTestNow('2026-11-01 00:10:00');
         $c = $this->applicant(3);
         $this->pay($c, 100000);
-        $this->assertSame(20, $c->fresh()->billing->discount_percent);
+        $this->assertSame(1200000, $c->fresh()->billing->net_bill);
     }
 
     public function test_inactive_period_gives_no_discount(): void
@@ -283,7 +302,10 @@ class EnrollmentTest extends TestCase
 
     public function test_period_validation_overlap_and_permissions(): void
     {
-        $data = fn (string $start, string $end, int $percent = 10) => ['name' => 'P', 'starts_on' => $start, 'ends_on' => $end, 'percent' => $percent];
+        $data = fn (string $start, string $end, int $amount = 1200000) => [
+            'name' => 'P', 'starts_on' => $start, 'ends_on' => $end,
+            'payable_amount' => $amount, 'uniform_threshold_amount' => 700000,
+        ];
 
         $this->actingAs($this->admin)->post('/discount-periods', $data('2026-11-01', '2026-11-15'))->assertSessionHasNoErrors();
         $this->assertSame(1, DiscountPeriod::count());
@@ -293,8 +315,8 @@ class EnrollmentTest extends TestCase
         $this->assertSame(2, DiscountPeriod::count());
 
         $this->actingAs($this->admin)->post('/discount-periods', $data('2026-12-01', '2026-11-01'))->assertSessionHasErrors('ends_on');
-        $this->actingAs($this->admin)->post('/discount-periods', $data('2026-12-01', '2026-12-10', 0))->assertSessionHasErrors('percent');
-        $this->actingAs($this->admin)->post('/discount-periods', $data('2026-12-01', '2026-12-10', 100))->assertSessionHasErrors('percent');
+        $this->actingAs($this->admin)->post('/discount-periods', $data('2026-12-01', '2026-12-10', 0))->assertSessionHasErrors('payable_amount');
+        $this->actingAs($this->admin)->post('/discount-periods', $data('2026-12-01', '2026-12-10', 1000000001))->assertSessionHasErrors('payable_amount');
 
         foreach ([$this->clerk, $this->reg] as $user) {
             $this->actingAs($user)->get('/discount-periods')->assertForbidden();
@@ -308,11 +330,30 @@ class EnrollmentTest extends TestCase
         $this->actingAs($this->admin)->patch("/discount-periods/{$first->id}/toggle-active")->assertSessionHas('success');
         $this->assertFalse($first->fresh()->is_active);
 
-        $this->actingAs($this->admin)->post('/discount-periods', ['name' => 'B', 'starts_on' => '2026-11-05', 'ends_on' => '2026-11-12', 'percent' => 15])
+        $this->actingAs($this->admin)->post('/discount-periods', [
+            'name' => 'B', 'starts_on' => '2026-11-05', 'ends_on' => '2026-11-12',
+            'payable_amount' => 1100000, 'uniform_threshold_amount' => 600000,
+        ])
             ->assertSessionHasNoErrors();
 
         $this->actingAs($this->admin)->patch("/discount-periods/{$first->id}/toggle-active")->assertSessionHas('error');
         $this->assertFalse($first->fresh()->is_active);
+    }
+
+    public function test_period_without_amounts_cannot_be_activated(): void
+    {
+        $period = DiscountPeriod::create([
+            'academic_year_id' => $this->year->id,
+            'name' => 'Periode lama',
+            'starts_on' => '2026-11-01',
+            'ends_on' => '2026-11-30',
+            'percent' => 20,
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->admin)->patch("/discount-periods/{$period->id}/toggle-active")
+            ->assertSessionHas('error');
+        $this->assertFalse($period->fresh()->is_active);
     }
 
     // ---------- diskon manual ----------
