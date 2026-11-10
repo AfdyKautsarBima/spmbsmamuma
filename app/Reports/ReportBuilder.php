@@ -649,11 +649,6 @@ class ReportBuilder
 
     // ------------------------------------------------------------------ seragam
 
-    private function typeCount(AcademicYear $year): int
-    {
-        return UniformType::where('academic_year_id', $year->id)->where('is_active', true)->count();
-    }
-
     private function seragamBelumAmbil(AcademicYear $year, array $f): Report
     {
         $selectedScopes = array_values(array_intersect((array) $f['scope'], ['belum', 'belum_lengkap']));
@@ -661,7 +656,12 @@ class ReportBuilder
             $selectedScopes = [$f['scope']];
         }
         $incomplete = in_array('belum_lengkap', $selectedScopes, true);
-        $typeCount = $this->typeCount($year);
+        $activeTypes = UniformType::query()
+            ->where('academic_year_id', $year->id)
+            ->where('is_active', true)
+            ->ordered()
+            ->get();
+        $typeCount = $activeTypes->count();
 
         $applicants = Applicant::with(['school', 'billing', 'payments' => $this->validPayments(), 'uniformEntitlement', 'uniformHandovers.type', 'uniformSizes.size'])
             ->where('academic_year_id', $year->id)
@@ -680,7 +680,12 @@ class ReportBuilder
         $rows = [];
         foreach ($applicants as $i => $a) {
             $sizes = $a->uniformSizes->map(fn ($s) => ($typeNames[$s->uniform_type_id] ?? '-').': '.$s->size->name)->join(', ');
-            $row = [$i + 1, $a->registration_number, $a->name, $a->school->name, (int) $a->payments->sum('amount'), $a->uniformEntitlement->granted_at->format('d/m/Y'), $sizes];
+            $handedTypeIds = $a->uniformHandovers->pluck('uniform_type_id');
+            $notHandedOver = $activeTypes
+                ->reject(fn ($type) => $handedTypeIds->contains($type->id))
+                ->pluck('name')
+                ->join(', ');
+            $row = [$i + 1, $a->registration_number, $a->name, $a->school->name, (int) $a->payments->sum('amount'), $a->uniformEntitlement->granted_at->format('d/m/Y'), $sizes, $notHandedOver];
             if ($incomplete) {
                 $row[] = $a->uniformHandovers->count().'/'.$typeCount.($a->uniformHandovers->isNotEmpty() ? ': '.$a->uniformHandovers->map(fn ($h) => $h->type->name)->join(', ') : '');
             }
@@ -688,6 +693,7 @@ class ReportBuilder
         }
 
         $columns = [Report::col('No'), Report::col('Nomor'), Report::col('Nama'), Report::col('Asal sekolah'), Report::col('Total dibayar', 'rp'), Report::col('Berhak sejak'), Report::col('Ukuran dicatat')];
+        $columns[] = Report::col('Seragam belum diambil');
         if ($incomplete) {
             $columns[] = Report::col('Sudah diambil');
         }

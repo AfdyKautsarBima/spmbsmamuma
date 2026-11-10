@@ -659,11 +659,13 @@ class ReportTest extends TestCase
         $none = $this->build('seragam-belum-ambil');
         $this->assertSame(['Murid S1'], $this->names($none, 2));
         $this->assertSame('Olahraga: M', $this->rows($none)[0][6]);
+        $this->assertSame('Baju Putih, Olahraga', $this->rows($none)[0][7]);
         $this->assertSame(900000, $this->rows($none)[0][4]);
 
         $incomplete = $this->build('seragam-belum-ambil', ['scope' => 'belum_lengkap']);
         $this->assertSame(['Murid S1', 'Murid S2'], $this->names($incomplete, 2));
-        $this->assertSame('1/2: Baju Putih', $this->rows($incomplete)[1][7]);
+        $this->assertSame('Olahraga', $this->rows($incomplete)[1][7]);
+        $this->assertSame('1/2: Baju Putih', $this->rows($incomplete)[1][8]);
         $bothScopes = $this->build('seragam-belum-ambil', ['scope' => ['belum', 'belum_lengkap']]);
         $this->assertSame(['Murid S1', 'Murid S2'], $this->names($bothScopes, 2));
         $this->actingAs($this->staff)->get('/laporan/seragam-belum-ambil?scope[]=belum&scope[]=belum_lengkap')
