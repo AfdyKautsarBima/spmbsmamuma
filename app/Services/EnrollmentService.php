@@ -257,6 +257,35 @@ class EnrollmentService
         });
     }
 
+    public function updatePaymentNote(Payment $payment, ?string $note): void
+    {
+        DB::transaction(function () use ($payment, $note) {
+            $payment = Payment::lockForUpdate()->findOrFail($payment->id);
+            $applicant = Applicant::withTrashed()->findOrFail($payment->applicant_id);
+
+            $this->ensureActiveYear($applicant);
+
+            if ($payment->cancelled_at) {
+                throw new DomainException('Catatan pembayaran yang dibatalkan tidak bisa diubah.');
+            }
+
+            $oldNote = $payment->note;
+            if ($oldNote === $note) {
+                return;
+            }
+
+            $payment->update(['note' => $note]);
+
+            ActivityLog::record(
+                'payment.note_updated',
+                "Catatan pembayaran {$payment->receipt_number} diperbarui ({$applicant->registration_number})",
+                $applicant,
+                ['catatan' => $oldNote],
+                ['catatan' => $note],
+            );
+        });
+    }
+
     /** Diskon manual (persen 0 sampai 99) menggantikan diskon periode. Persen 0 berarti tanpa diskon. */
     public function setManualDiscount(Applicant $applicant, int $percent, string $reason, User $by): void
     {

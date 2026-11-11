@@ -103,7 +103,15 @@
                             <td class="whitespace-nowrap py-2 pr-4 text-right {{ $payment->isCancelled() ? 'line-through' : '' }}">{{ $rp($payment->amount) }}</td>
                             <td class="py-2 pr-4">{{ $payment->receiver->name }}</td>
                             <td class="py-2 pr-4">
-                                {{ $payment->note }}
+                                @if ($canWrite && ! $payment->isCancelled())
+                                    <form method="POST" action="{{ route('enrollment.payments.note', $payment) }}" class="flex min-w-48 gap-1">
+                                        @csrf @method('PUT')
+                                        <input name="note" maxlength="150" value="{{ $payment->note }}" aria-label="Catatan {{ $payment->receipt_number }}" class="w-full min-w-32 rounded border border-slate-300 px-2 py-1 text-xs">
+                                        <button class="whitespace-nowrap rounded border px-2 py-1 text-xs hover:bg-slate-50">Simpan</button>
+                                    </form>
+                                @else
+                                    {{ $payment->note }}
+                                @endif
                                 @if ($payment->isCancelled())
                                     <p class="text-xs text-red-600">Dibatalkan {{ $payment->canceller?->name }}, {{ $payment->cancelled_at->format('d/m/Y H:i') }}: {{ $payment->cancel_reason }}</p>
                                 @endif

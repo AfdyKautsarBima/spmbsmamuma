@@ -85,6 +85,17 @@ class EnrollmentController extends Controller
         );
     }
 
+    public function updatePaymentNote(Request $request, Payment $payment): RedirectResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:150']], [], ['note' => 'catatan']);
+
+        return $this->attempt(
+            fn () => $this->enrollment->updatePaymentNote($payment, $data['note'] ?? null),
+            $payment->applicant_id,
+            "Catatan pembayaran {$payment->receipt_number} diperbarui.",
+        );
+    }
+
     public function withdraw(Request $request, Applicant $applicant): RedirectResponse
     {
         $request->merge(['date' => DateInput::toIso($request->input('date'))]);

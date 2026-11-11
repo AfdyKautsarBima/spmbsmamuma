@@ -60,6 +60,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('daftar-ulang', [EnrollmentController::class, 'index'])->name('enrollment.index');
         Route::get('daftar-ulang/{applicant}', [EnrollmentController::class, 'show'])->name('enrollment.show');
         Route::post('daftar-ulang/{applicant}/pembayaran', [EnrollmentController::class, 'storePayment'])->name('enrollment.payments.store');
+        Route::put('pembayaran/{payment}/catatan', [EnrollmentController::class, 'updatePaymentNote'])->name('enrollment.payments.note');
         Route::post('daftar-ulang/{applicant}/mundur', [EnrollmentController::class, 'withdraw'])->name('enrollment.withdraw');
         Route::get('daftar-ulang/{applicant}/bukti', [EnrollmentController::class, 'proof'])->name('enrollment.proof');
         Route::get('kwitansi/{payment}', [EnrollmentController::class, 'receipt'])->name('enrollment.receipt');

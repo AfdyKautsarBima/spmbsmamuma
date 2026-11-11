@@ -194,6 +194,27 @@ class EnrollmentTest extends TestCase
         $this->assertSame(E::Lunas, $this->summary($a)['status']);
     }
 
+    public function test_payment_note_can_be_edited_after_payment_is_saved(): void
+    {
+        $a = $this->applicant();
+        $this->pay($a, 500000, $this->clerk, ['note' => 'Catatan awal'])->assertSessionHasNoErrors();
+        $payment = Payment::firstOrFail();
+
+        $this->actingAs($this->clerk)
+            ->put("/pembayaran/{$payment->id}/catatan", ['note' => 'Catatan diperbarui'])
+            ->assertRedirect(route('enrollment.show', $a))
+            ->assertSessionHas('success');
+
+        $this->assertSame('Catatan diperbarui', $payment->fresh()->note);
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'payment.note_updated',
+            'subject_id' => $a->id,
+        ]);
+        $this->actingAs($this->clerk)->get(route('enrollment.show', $a))
+            ->assertSee('Catatan diperbarui')
+            ->assertSee('value="Catatan diperbarui"', false);
+    }
+
     public function test_period_sets_fixed_uniform_threshold_and_final_payable_amount(): void
     {
         Carbon::setTestNow('2026-11-10 10:00:00');
