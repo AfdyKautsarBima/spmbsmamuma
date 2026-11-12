@@ -33,12 +33,14 @@
                     <th class="px-4 py-3">Asal sekolah</th>
                     <th class="px-4 py-3">NISN</th>
                     <th class="px-4 py-3">Status berkas</th>
+                    <th class="px-4 py-3">Status daftar ulang</th>
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
             <tbody class="divide-y align-top">
                 @forelse ($applicants as $a)
                     @php($lack = $missing[$a->id] ?? [])
+                    @php($enrollmentStatus = $enrollmentStatuses[$a->id])
                     <tr>
                         <td class="whitespace-nowrap px-4 py-3 font-medium">{{ $a->registration_number }}</td>
                         <td class="px-4 py-3">{{ $a->name }}</td>
@@ -52,12 +54,15 @@
                                 <p class="mt-1 max-w-md text-xs text-slate-500">Kurang: {{ implode(', ', array_slice($lack, 0, 4)) }}{{ count($lack) > 4 ? ' dan '.(count($lack) - 4).' lainnya' : '' }}</p>
                             @endif
                         </td>
+                        <td class="whitespace-nowrap px-4 py-3">
+                            <span class="rounded px-2 py-1 text-xs {{ $enrollmentStatus->badgeClass() }}">{{ $enrollmentStatus->label() }}</span>
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('documents.edit', $a) }}" class="rounded bg-slate-800 px-3 py-1 text-white hover:bg-slate-700">Cek berkas</a>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Tidak ada data.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Tidak ada data.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -12,6 +12,7 @@ use App\Models\ApplicantDocument;
 use App\Models\ApplicantFamilyDetail;
 use App\Models\Occupation;
 use App\Services\DocumentChecklist;
+use App\Services\EnrollmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ use Illuminate\View\View;
 
 class DocumentController extends Controller
 {
-    public function __construct(private DocumentChecklist $checklist)
+    public function __construct(private DocumentChecklist $checklist, private EnrollmentService $enrollment)
     {
     }
 
@@ -29,7 +30,13 @@ class DocumentController extends Controller
         $year = AcademicYear::active();
 
         $applicants = Applicant::query()
-            ->with(['school', 'documents', 'familyDetail'])
+            ->with([
+                'school',
+                'documents',
+                'familyDetail',
+                'billing',
+                'payments' => fn ($q) => $q->whereNull('cancelled_at'),
+            ])
             ->when($year, fn ($q, $y) => $q->where('academic_year_id', $y->id), fn ($q) => $q->whereRaw('1 = 0'))
             ->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w
                 ->where('name', 'like', "%{$s}%")
@@ -62,7 +69,16 @@ class DocumentController extends Controller
             );
         }
 
-        return view('documents.index', ['applicants' => $applicants, 'year' => $year, 'missing' => $missing]);
+        $enrollmentStatuses = $applicants->mapWithKeys(
+            fn ($applicant) => [$applicant->id => $this->enrollment->summary($applicant)['status']],
+        );
+
+        return view('documents.index', [
+            'applicants' => $applicants,
+            'year' => $year,
+            'missing' => $missing,
+            'enrollmentStatuses' => $enrollmentStatuses,
+        ]);
     }
 
     public function edit(Applicant $applicant): View

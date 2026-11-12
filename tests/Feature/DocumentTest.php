@@ -678,6 +678,12 @@ class DocumentTest extends TestCase
             ]);
         }
 
+        $this->actingAs($this->user)->get('/berkas')
+            ->assertOk()
+            ->assertSee('Terdaftar')
+            ->assertSee('Daftar ulang, menyicil')
+            ->assertSee('Daftar ulang, lunas');
+
         $this->actingAs($this->user)->get('/berkas?enrollment_status=menyicil')
             ->assertSee('Murid Menyicil')->assertDontSee('Murid Lunas')->assertDontSee('Murid Belum Bayar');
         $this->actingAs($this->user)->get('/berkas?enrollment_status=lunas')
