@@ -239,7 +239,7 @@ class ApplicantTest extends TestCase
         $this->actingAs($this->user)->get(route('applicants.show', $applicant))
             ->assertOk()
             ->assertSee('Hubungi via WhatsApp')
-            ->assertSee('https://wa.me/6281234567890')
+            ->assertSee('https://wa.me/6281234567891')
             ->assertSee('Nomor HP siswa')
             ->assertSee('081234567891')
             ->assertSee('Nomor HP orang tua/wali');
@@ -264,15 +264,15 @@ class ApplicantTest extends TestCase
             ->assertOk()
             ->assertDontSee('Hubungi via WhatsApp');
 
-        $withoutPhone = $this->makeApplicant(2);
-        $this->actingAs($this->user)->get(route('applicants.show', $withoutPhone))
+        $withoutStudentPhone = $this->makeApplicant(2, ['phone' => '081234567890']);
+        $this->actingAs($this->user)->get(route('applicants.show', $withoutStudentPhone))
             ->assertOk()
             ->assertDontSee('Hubungi via WhatsApp');
     }
 
     public function test_whatsapp_template_is_prefilled_and_applies_applicant_placeholders(): void
     {
-        $applicant = $this->makeApplicant(1, ['phone' => '081234567890']);
+        $applicant = $this->makeApplicant(1, ['student_phone' => '081234567891']);
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->put(route('whatsapp-template.update'), [
@@ -286,7 +286,7 @@ class ApplicantTest extends TestCase
 
         $this->actingAs($this->user)->get(route('applicants.show', $applicant))
             ->assertOk()
-            ->assertSee('https://wa.me/6281234567890?text=Halo%20Murid%201%2C%20nomor%20pendaftaran%20A-001.');
+            ->assertSee('https://wa.me/6281234567891?text=Halo%20Murid%201%2C%20nomor%20pendaftaran%20A-001.');
     }
 
     public function test_address_must_be_consistent_and_complete_to_village(): void

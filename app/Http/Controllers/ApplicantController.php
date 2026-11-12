@@ -127,8 +127,8 @@ class ApplicantController extends Controller
             'history'   => $history,
             'canEdit'   => ! $applicant->trashed() && $applicant->academicYear->is_active,
             'enrollmentSummary' => $enrollmentSummary,
-            'whatsappUrl' => $applicant->phone
-                ? app(WhatsAppMessageTemplate::class)->urlFor($applicant, '62'.substr($applicant->phone, 1))
+            'whatsappUrl' => $applicant->student_phone
+                ? app(WhatsAppMessageTemplate::class)->urlFor($applicant, '62'.substr($applicant->student_phone, 1))
                 : null,
         ]);
     }

@@ -155,7 +155,7 @@
                 </div>
             </div>
             <div class="sm:w-1/2">
-                <label for="phone" class="mb-1 block text-sm font-medium">Nomor HP orang tua/wali (opsional, untuk WhatsApp)</label>
+                <label for="phone" class="mb-1 block text-sm font-medium">Nomor HP orang tua/wali (opsional)</label>
                 <input id="phone" name="phone" inputmode="tel" value="{{ old('phone', $applicant->phone) }}" placeholder="08xxxxxxxxxx"
                        class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
                 @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
