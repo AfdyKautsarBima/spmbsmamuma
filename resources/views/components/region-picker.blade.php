@@ -6,7 +6,7 @@
     foreach ($keys as $i => $key) {
         $preset[$i] = old($key, $values[$i] ?? null);
     }
-    if (! array_filter($preset)) {
+    if (! array_filter($preset) && $required) {
         $preset[0] = config('spmb.default_province_code');
     }
 @endphp
@@ -15,7 +15,10 @@
      data-values="{{ json_encode($preset) }}" class="grid gap-3 sm:grid-cols-2">
     @for ($i = 0; $i < $levels; $i++)
         <div>
-            <label class="mb-1 block text-sm font-medium">{{ $labels[$i] }}</label>
+            <label class="mb-1 block text-sm font-medium">
+                {{ $labels[$i] }}
+                @unless ($required)<span class="font-normal text-slate-500">(opsional)</span>@endunless
+            </label>
             <select name="{{ $keys[$i] }}" @required($required)
                     class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
                 <option value="">-- Pilih --</option>

@@ -139,7 +139,7 @@ class DocumentRequest extends FormRequest
             }
         });
 
-        $studentYear = $applicant->birth_date->year;
+        $studentYear = $applicant->birth_date?->year ?? now()->year;
         $minYear = 1920;
         $maxYear = $studentYear - 12;
 

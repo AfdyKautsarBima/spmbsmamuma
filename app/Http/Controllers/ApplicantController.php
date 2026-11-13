@@ -81,7 +81,8 @@ class ApplicantController extends Controller
         $year = AcademicYear::active();
         $payload = $request->payload();
 
-        $warnings = $this->checks->warnings($year->id, $payload['registration_seq'], $payload['person_key'], null, true);
+        $personKey = $payload['birth_date'] !== null && $payload['mother_name'] !== null ? $payload['person_key'] : null;
+        $warnings = $this->checks->warnings($year->id, $payload['registration_seq'], $personKey, null, true);
         if ($warnings && ! $request->boolean('confirm_warnings')) {
             return back()->withInput()->with('warnings', $warnings);
         }
@@ -159,7 +160,8 @@ class ApplicantController extends Controller
         }
 
         if ($payload['person_key'] !== $applicant->person_key) {
-            $warnings = $this->checks->warnings($applicant->academic_year_id, $payload['registration_seq'], $payload['person_key'], $applicant->id, false);
+            $personKey = $payload['birth_date'] !== null && $payload['mother_name'] !== null ? $payload['person_key'] : null;
+            $warnings = $this->checks->warnings($applicant->academic_year_id, $payload['registration_seq'], $personKey, $applicant->id, false);
             if ($warnings && ! $request->boolean('confirm_warnings')) {
                 return back()->withInput()->with('warnings', $warnings);
             }

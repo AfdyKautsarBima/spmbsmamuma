@@ -31,7 +31,10 @@
                     'Tahun ajaran' => $applicant->academicYear->name,
                     'Nama murid' => $applicant->name,
                     'Jenis kelamin' => $applicant->gender === 'L' ? 'Laki-laki' : 'Perempuan',
-                    'Tempat, tanggal lahir' => $applicant->birth_place.', '.$applicant->birth_date->format('d/m/Y'),
+                    'Tempat, tanggal lahir' => implode(', ', array_filter([
+                        $applicant->birth_place,
+                        $applicant->birth_date?->format('d/m/Y'),
+                    ])) ?: '-',
                     'Nomor HP siswa' => $applicant->student_phone ?? '-',
                     'Alamat' => $applicant->fullAddress(),
                 ] as $label => $value)

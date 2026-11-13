@@ -27,7 +27,7 @@ class ApplicantChecks
     /**
      * @return list<array{type: string, message: string, applicants: list<array{id:int,number:string,name:string}>}>
      */
-    public function warnings(int $yearId, int $seq, string $personKey, ?int $ignoreId, bool $checkJump): array
+    public function warnings(int $yearId, int $seq, ?string $personKey, ?int $ignoreId, bool $checkJump): array
     {
         $warnings = [];
 
@@ -44,7 +44,7 @@ class ApplicantChecks
             }
         }
 
-        $same = Applicant::query()
+        $same = $personKey === null ? collect() : Applicant::query()
             ->where('academic_year_id', $yearId)
             ->where('person_key', $personKey)
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))

@@ -25,26 +25,39 @@ class ApplicantRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $collapse = fn ($v) => trim(preg_replace('/\s+/u', ' ', (string) $v));
+        $optionalText = fn ($v) => ($value = $collapse($v)) === '' ? null : $value;
 
         $number = strtoupper(preg_replace('/\s+/', '', (string) $this->input('registration_number')));
         if (preg_match('/^A(\d+)$/', $number, $m)) {
             $number = 'A-'.$m[1];
         }
+        if ($number === '') {
+            /** @var Applicant|null $applicant */
+            $applicant = $this->route('applicant');
+            if ($applicant) {
+                $number = $applicant->registration_number;
+            } elseif ($yearId = AcademicYear::active()?->id) {
+                $lastSeq = Applicant::withTrashed()->where('academic_year_id', $yearId)->max('registration_seq');
+                $number = Applicant::formatNumber((int) $lastSeq + 1);
+            }
+        }
 
         $phone = preg_replace('/[\s\-.]/', '', (string) $this->input('phone'));
         $studentPhone = preg_replace('/[\s\-.]/', '', (string) $this->input('student_phone'));
+        $rt = trim((string) $this->input('rt'));
+        $rw = trim((string) $this->input('rw'));
 
         $this->merge([
             'registration_number' => $number,
             'birth_date'          => DateInput::toIso($this->input('birth_date')),
             'name'                => $collapse($this->input('name')),
-            'birth_place'         => $collapse($this->input('birth_place')),
-            'father_name'         => $collapse($this->input('father_name')),
-            'mother_name'         => $collapse($this->input('mother_name')),
+            'birth_place'         => $optionalText($this->input('birth_place')),
+            'father_name'         => $optionalText($this->input('father_name')),
+            'mother_name'         => $optionalText($this->input('mother_name')),
             'phone'               => $phone === '' ? null : $phone,
             'student_phone'       => $studentPhone === '' ? null : $studentPhone,
-            'rt'                  => trim((string) $this->input('rt')),
-            'rw'                  => trim((string) $this->input('rw')),
+            'rt'                  => $rt === '' ? null : $rt,
+            'rw'                  => $rw === '' ? null : $rw,
         ]);
     }
 
@@ -54,7 +67,7 @@ class ApplicantRequest extends FormRequest
         $applicant = $this->route('applicant');
         $yearId = $applicant?->academic_year_id ?? AcademicYear::active()?->id;
         $currentSchool = $applicant?->school_id;
-        $code = ['required', 'string', 'regex:/^\d{2}(\.\d{2}){0,2}(\.\d{4})?$/'];
+        $code = ['nullable', 'string', 'regex:/^\d{2}(\.\d{2}){0,2}(\.\d{4})?$/'];
 
         return [
             'registration_number' => [
@@ -82,16 +95,16 @@ class ApplicantRequest extends FormRequest
             ],
             'name'          => ['required', 'string', 'max:100'],
             'gender'        => ['required', 'in:L,P'],
-            'birth_place'   => ['required', 'string', 'max:100'],
-            'birth_date'    => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'after:1950-01-01'],
+            'birth_place'   => ['nullable', 'string', 'max:100'],
+            'birth_date'    => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today', 'after:1950-01-01'],
             'province_code' => $code,
             'regency_code'  => $code,
             'district_code' => $code,
             'village_code'  => array_merge($code, [Rule::exists('regions', 'code')->where('level', 4)]),
-            'rt'            => ['required', 'regex:/^\d{1,3}$/'],
-            'rw'            => ['required', 'regex:/^\d{1,3}$/'],
-            'father_name'   => ['required', 'string', 'max:100'],
-            'mother_name'   => ['required', 'string', 'max:100'],
+            'rt'            => ['nullable', 'regex:/^\d{1,3}$/'],
+            'rw'            => ['nullable', 'regex:/^\d{1,3}$/'],
+            'father_name'   => ['nullable', 'string', 'max:100'],
+            'mother_name'   => ['nullable', 'string', 'max:100'],
             'phone'         => ['nullable', 'regex:/^08\d{8,11}$/'],
             'student_phone' => ['nullable', 'regex:/^08\d{8,11}$/'],
             'school_id'     => ['required', Rule::exists('schools', 'id')->where(function ($q) use ($currentSchool) {
@@ -100,22 +113,28 @@ class ApplicantRequest extends FormRequest
                     $q->orWhere('id', $currentSchool);
                 }
             })],
-            'referrer_name' => ['nullable', 'required_with:referrer_class_name', 'string', 'max:100'],
+            'referrer_name' => ['nullable', 'string', 'max:100'],
             'referrer_class_name' => ['nullable', 'string', 'max:50'],
             'referrer_class_option' => ['nullable', 'string', Rule::in([...ReferrerClass::OPTIONS, ReferrerClass::OTHER])],
-            'referrer_class_other' => ['nullable', 'string', 'max:50', 'required_if:referrer_class_option,'.ReferrerClass::OTHER],
+            'referrer_class_other' => ['nullable', 'string', 'max:50'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
-            if (($this->filled('referrer_class_option') || $this->filled('referrer_class_name'))
-                && ! $this->filled('referrer_name')) {
-                $v->errors()->add('referrer_name', 'Nama pembawa wajib diisi jika kelas pembawa dipilih.');
+            if ($v->errors()->hasAny(['province_code', 'regency_code', 'district_code', 'village_code'])) {
+                return;
             }
 
-            if ($v->errors()->hasAny(['province_code', 'regency_code', 'district_code', 'village_code'])) {
+            $codes = ['province_code', 'regency_code', 'district_code', 'village_code'];
+            $provided = array_filter($codes, fn ($code) => $this->filled($code));
+            if ($provided === []) {
+                return;
+            }
+            if (count($provided) !== count($codes)) {
+                $v->errors()->add('village_code', 'Lengkapi alamat sampai desa/kelurahan atau kosongkan seluruh alamat.');
+
                 return;
             }
 
@@ -143,7 +162,7 @@ class ApplicantRequest extends FormRequest
     {
         return [
             'registration_number' => 'nomor pendaftaran',
-            'name'                => 'nama murid',
+            'name'                => 'nama pendaftar',
             'gender'              => 'jenis kelamin',
             'birth_place'         => 'tempat lahir',
             'birth_date'          => 'tanggal lahir',
@@ -186,7 +205,13 @@ class ApplicantRequest extends FormRequest
     public function payload(): array
     {
         $v = $this->validated();
-        $names = Region::whereIn('code', [$v['province_code'], $v['regency_code'], $v['district_code'], $v['village_code']])
+        $codes = array_filter([
+            $v['province_code'] ?? null,
+            $v['regency_code'] ?? null,
+            $v['district_code'] ?? null,
+            $v['village_code'] ?? null,
+        ]);
+        $names = Region::whereIn('code', $codes)
             ->pluck('name', 'code');
 
         return [
@@ -194,26 +219,26 @@ class ApplicantRequest extends FormRequest
             'registration_seq'    => Applicant::parseNumber($v['registration_number']),
             'name'                => $v['name'],
             'gender'              => $v['gender'],
-            'birth_place'         => $v['birth_place'],
-            'birth_date'          => $v['birth_date'],
-            'province_code'       => $v['province_code'],
-            'province_name'       => $names[$v['province_code']],
-            'regency_code'        => $v['regency_code'],
-            'regency_name'        => $names[$v['regency_code']],
-            'district_code'       => $v['district_code'],
-            'district_name'       => $names[$v['district_code']],
-            'village_code'        => $v['village_code'],
-            'village_name'        => $names[$v['village_code']],
-            'rt'                  => str_pad($v['rt'], 3, '0', STR_PAD_LEFT),
-            'rw'                  => str_pad($v['rw'], 3, '0', STR_PAD_LEFT),
-            'father_name'         => $v['father_name'],
-            'mother_name'         => $v['mother_name'],
+            'birth_place'         => $v['birth_place'] ?? null,
+            'birth_date'          => $v['birth_date'] ?? null,
+            'province_code'       => $v['province_code'] ?? null,
+            'province_name'       => $names[$v['province_code'] ?? ''] ?? null,
+            'regency_code'        => $v['regency_code'] ?? null,
+            'regency_name'        => $names[$v['regency_code'] ?? ''] ?? null,
+            'district_code'       => $v['district_code'] ?? null,
+            'district_name'       => $names[$v['district_code'] ?? ''] ?? null,
+            'village_code'        => $v['village_code'] ?? null,
+            'village_name'        => $names[$v['village_code'] ?? ''] ?? null,
+            'rt'                  => isset($v['rt']) ? str_pad($v['rt'], 3, '0', STR_PAD_LEFT) : null,
+            'rw'                  => isset($v['rw']) ? str_pad($v['rw'], 3, '0', STR_PAD_LEFT) : null,
+            'father_name'         => $v['father_name'] ?? null,
+            'mother_name'         => $v['mother_name'] ?? null,
             'phone'               => $v['phone'] ?? null,
             'student_phone'       => $v['student_phone'] ?? null,
             'school_id'           => (int) $v['school_id'],
             'referrer_name'       => isset($v['referrer_name']) ? trim(preg_replace('/\s+/u', ' ', $v['referrer_name'])) ?: null : null,
             'referrer_class_name' => $this->referrerClassName($v),
-            'person_key'          => Applicant::personKey($v['name'], $v['birth_date'], $v['mother_name']),
+            'person_key'          => Applicant::personKey($v['name'], $v['birth_date'] ?? null, $v['mother_name'] ?? null),
         ];
     }
 

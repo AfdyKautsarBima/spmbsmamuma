@@ -231,7 +231,7 @@ class DocumentController extends Controller
         $applicant->father_name = $kk['father_name'];
         $applicant->mother_name = $kk['mother_name'];
         if ($applicant->isDirty(['father_name', 'mother_name'])) {
-            $applicant->person_key = Applicant::personKey($applicant->name, $applicant->birth_date->format('Y-m-d'), $applicant->mother_name);
+            $applicant->person_key = Applicant::personKey($applicant->name, $applicant->birth_date?->format('Y-m-d'), $applicant->mother_name);
             [$old, $new] = ActivityLog::changes($applicant, ['person_key', 'updated_at']);
             $applicant->save();
             ActivityLog::record('applicant.updated', "Nama orang tua {$applicant->registration_number} dikoreksi sesuai KK", $applicant, $old, $new);

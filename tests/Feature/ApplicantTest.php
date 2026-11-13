@@ -115,6 +115,26 @@ class ApplicantTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['event' => 'applicant.created', 'subject_id' => $applicant->id]);
     }
 
+    public function test_store_requires_only_name_gender_and_school_and_generates_number(): void
+    {
+        $response = $this->actingAs($this->user)->post('/applicants', [
+            'name' => 'Pendaftar Baru',
+            'gender' => 'P',
+            'school_id' => $this->school->id,
+        ]);
+
+        $response->assertRedirect(route('applicants.create'))->assertSessionHasNoErrors();
+
+        $applicant = Applicant::firstOrFail();
+        $this->assertSame('A-001', $applicant->registration_number);
+        $this->assertNull($applicant->birth_place);
+        $this->assertNull($applicant->birth_date);
+        $this->assertNull($applicant->province_code);
+        $this->assertNull($applicant->rt);
+        $this->assertNull($applicant->father_name);
+        $this->assertNull($applicant->mother_name);
+    }
+
     public function test_number_is_normalized_and_validated(): void
     {
         $this->actingAs($this->user)->post('/applicants', $this->payload(['registration_number' => ' a001 ']))->assertSessionHasNoErrors();
@@ -306,8 +326,7 @@ class ApplicantTest extends TestCase
     public function test_required_fields(): void
     {
         $this->actingAs($this->user)->post('/applicants', [])->assertSessionHasErrors([
-            'registration_number', 'name', 'gender', 'birth_place', 'birth_date', 'village_code', 'rt', 'rw',
-            'father_name', 'mother_name', 'school_id',
+            'name', 'gender', 'school_id',
         ]);
     }
 
@@ -329,7 +348,7 @@ class ApplicantTest extends TestCase
             'registration_number' => 'A-003',
             'referrer_name' => null,
             'referrer_class_name' => 'XI IPA 1',
-        ]))->assertSessionHasErrors('referrer_name');
+        ]))->assertSessionHasNoErrors();
     }
 
     public function test_no_active_year_blocks_input(): void
@@ -540,7 +559,8 @@ class ApplicantTest extends TestCase
             'mother_name' => 'Ibu Ketiga',
             'referrer_class_option' => 'lainnya',
             'referrer_class_other' => '',
-        ]))->assertSessionHasErrors('referrer_class_other');
+        ]))->assertSessionHasNoErrors();
+        $this->assertNull(Applicant::where('registration_number', 'A-003')->firstOrFail()->referrer_class_name);
     }
 
     public function test_existing_referrer_values_are_copied_to_applicants_by_the_migration(): void

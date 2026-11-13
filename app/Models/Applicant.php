@@ -113,11 +113,11 @@ class Applicant extends Model
     }
 
     /** Kunci orang: nama + tanggal lahir + nama ibu, tanpa membedakan huruf besar/kecil dan spasi ganda. */
-    public static function personKey(string $name, string $birthDate, string $motherName): string
+    public static function personKey(string $name, ?string $birthDate, ?string $motherName): string
     {
         $norm = fn (string $v) => trim(preg_replace('/[^\p{L}\p{N}]+/u', ' ', mb_strtolower($v)));
 
-        return $norm($name).'|'.$birthDate.'|'.$norm($motherName);
+        return $norm($name).'|'.($birthDate ?? '').'|'.$norm($motherName ?? '');
     }
 
     /** Pembawa terkunci sejak pembayaran pertama yang sah. Setelah itu hanya admin yang boleh mengubahnya. */
@@ -128,6 +128,17 @@ class Applicant extends Model
 
     public function fullAddress(): string
     {
-        return "RT {$this->rt}/RW {$this->rw}, {$this->village_name}, {$this->district_name}, {$this->regency_name}, {$this->province_name}";
+        $parts = [];
+        if ($this->rt !== null || $this->rw !== null) {
+            $parts[] = 'RT '.($this->rt ?? '-').'/RW '.($this->rw ?? '-');
+        }
+
+        foreach ([$this->village_name, $this->district_name, $this->regency_name, $this->province_name] as $part) {
+            if ($part !== null && $part !== '') {
+                $parts[] = $part;
+            }
+        }
+
+        return $parts === [] ? '-' : implode(', ', $parts);
     }
 }

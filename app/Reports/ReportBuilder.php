@@ -103,8 +103,8 @@ class ReportBuilder
         $rows = [];
         foreach ($applicants as $i => $a) {
             $rows[] = [
-                $i + 1, $a->registration_number, $a->name, $a->gender, $a->birth_place, $a->birth_date->format('d/m/Y'),
-                $a->fullAddress(), $a->father_name, $a->mother_name, $a->student_phone ?? '', $a->phone ?? '', $a->nisn ?? '',
+                $i + 1, $a->registration_number, $a->name, $a->gender, $a->birth_place ?? '', $a->birth_date?->format('d/m/Y') ?? '',
+                $a->fullAddress(), $a->father_name ?? '', $a->mother_name ?? '', $a->student_phone ?? '', $a->phone ?? '', $a->nisn ?? '',
                 $a->school->name, $a->referrer_name ?? '', $a->referrer_class_name ?? '', $a->created_at->format('d/m/Y'),
             ];
         }
