@@ -237,13 +237,20 @@ class ApplicantTest extends TestCase
 
         $this->actingAs($this->user)->post('/applicants', $this->payload([
             'registration_number' => 'A-002',
-            'name' => 'Tanpa HP Siswa',
-            'student_phone' => null,
+            'name' => 'HP Siswa 13 Digit',
+            'student_phone' => '0812345678912',
         ]))->assertSessionHasNoErrors();
-        $this->assertNull(Applicant::where('registration_number', 'A-002')->firstOrFail()->student_phone);
+        $this->assertSame('0812345678912', Applicant::where('registration_number', 'A-002')->firstOrFail()->student_phone);
 
         $this->actingAs($this->user)->post('/applicants', $this->payload([
             'registration_number' => 'A-003',
+            'name' => 'Tanpa HP Siswa',
+            'student_phone' => null,
+        ]))->assertSessionHasNoErrors();
+        $this->assertNull(Applicant::where('registration_number', 'A-003')->firstOrFail()->student_phone);
+
+        $this->actingAs($this->user)->post('/applicants', $this->payload([
+            'registration_number' => 'A-004',
             'name' => 'HP Siswa Tidak Valid',
             'student_phone' => '0712345678',
         ]))->assertSessionHasErrors('student_phone');
