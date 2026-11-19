@@ -8,7 +8,7 @@
 </head>
 <body class="flex min-h-screen items-center justify-center bg-slate-100 px-4">
 <div class="w-full max-w-sm rounded-lg bg-white p-6 shadow">
-    <h1 class="mb-1 text-xl font-semibold text-slate-800">SPMB SMA</h1>
+    <h1 class="mb-1 text-xl font-semibold text-slate-800">SPMB SMAMUMA</h1>
     <p class="mb-5 text-sm text-slate-500">Masuk dengan akun panitia.</p>
 
     <form method="POST" action="{{ route('login') }}" class="space-y-4">

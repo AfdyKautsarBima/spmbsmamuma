@@ -19,7 +19,7 @@
 
 <header class="bg-slate-800">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3">
-        <span class="mr-4 font-semibold text-white">SPMB SMA</span>
+        <span class="mr-4 font-semibold text-white">SPMB SMAMUMA</span>
         <nav class="flex flex-wrap gap-1">
             {!! $link('dashboard', 'Dashboard', 'dashboard') !!}
             {!! $link('reports.index', 'Laporan', 'reports.*') !!}
